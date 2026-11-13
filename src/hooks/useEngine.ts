@@ -1,0 +1,88 @@
+import { useEffect } from 'react';
+import { App as CapApp } from '@capacitor/app';
+import { useStore } from '../store/useStore';
+import { getSystemInfo, haversine, startBattery } from '../platform/system';
+import { nativeBonded, nativeInit } from '../platform/ble';
+import type { Screen } from '../types';
+
+/** Ξεκινά τη μηχανή της εφαρμογής: live tick, μπαταρία, πληροφορίες συστήματος, native Bluetooth, GPS, κουμπί «πίσω». */
+export function useEngine() {
+  useEffect(() => {
+    const st = useStore.getState();
+    const iv = window.setInterval(() => useStore.getState().tick(), 1000);
+    let disposed = false;
+    let stopBattery: (() => void) | null = null;
+
+    getSystemInfo()
+      .then((i) => useStore.getState().setSysInfo(i))
+      .catch(() => undefined);
+    startBattery((l, c) => useStore.getState().setBatteryLive(l, c)).then((stop) => {
+      if (disposed) stop?.();
+      else stopBattery = stop;
+    });
+    let backHandle: { remove: () => Promise<void> } | null = null;
+    if (st.caps.native) {
+      nativeInit((en) => useStore.getState().setLive({ btEnabled: en })).then(async (ok) => {
+        if (ok) useStore.getState().setLive({ bonded: await nativeBonded() });
+      });
+      // Κουμπί «πίσω» του Android: κλείνει παράθυρα → επιστρέφει στην Αρχική → έξοδος
+      CapApp.addListener('backButton', () => {
+        const s = useStore.getState();
+        if (s.pendingRequest) return;
+        if (s.help) return s.closeHelp();
+        if (s.selectedDevice) return s.selectDevice(null);
+        if (s.sheet) return s.openSheet(null);
+        if (s.screen !== 'home') {
+          useStore.setState({ screen: 'home' });
+          return;
+        }
+        void CapApp.exitApp();
+      })
+        .then((h) => {
+          if (disposed) void h.remove();
+          else backHandle = h;
+        })
+        .catch(() => undefined);
+    }
+
+    try {
+      window.history.replaceState({ screen: useStore.getState().screen }, '');
+    } catch {
+      /* ignore */
+    }
+    const onPop = (e: PopStateEvent) => {
+      const s = useStore.getState();
+      if (s.help) s.closeHelp();
+      if (s.sheet) s.openSheet(null);
+      const screen = ((e.state && e.state.screen) || 'home') as Screen;
+      useStore.setState({ screen });
+    };
+    window.addEventListener('popstate', onPop);
+
+    return () => {
+      disposed = true;
+      window.clearInterval(iv);
+      stopBattery?.();
+      void backHandle?.remove();
+      window.removeEventListener('popstate', onPop);
+    };
+  }, []);
+
+  const useGps = useStore((s) => s.settings.useGps);
+  const places = useStore((s) => s.trustedPlaces);
+  useEffect(() => {
+    if (!useGps || typeof navigator === 'undefined' || !navigator.geolocation) return;
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        const pos = { lat: p.coords.latitude, lon: p.coords.longitude };
+        const inside = places.find((pl) => pl.lat != null && pl.lon != null && haversine(pos, { lat: pl.lat, lon: pl.lon }) <= pl.radius);
+        const loc = inside ? inside.kind : 'public';
+        const s = useStore.getState();
+        if (s.location !== loc) s.setLocation(loc, 'GPS');
+      },
+      () => undefined,
+      { enableHighAccuracy: false, maximumAge: 60000, timeout: 30000 },
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, [useGps, places]);
+}

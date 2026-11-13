@@ -1,0 +1,9 @@
+{
+  "appId": "gr.blueshield.app",
+  "appName": "BlueShield",
+  "webDir": "dist",
+  "backgroundColor": "#0a1020",
+  "android": {
+    "backgroundColor": "#0a1020"
+  }
+}
