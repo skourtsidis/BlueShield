@@ -30,12 +30,12 @@ export function Logo({ size = 36 }: { size?: number }) {
 
 const TITLES: Record<Screen, string> = {
   home: 'BlueShield',
-  radar: 'Ραντάρ Bluetooth',
-  protection: 'Μονάδες Προστασίας',
-  devices: 'Συσκευές',
-  learn: 'Οδηγός Ασφάλειας',
-  settings: 'Ρυθμίσεις',
-  events: 'Αρχείο Συμβάντων',
+  radar: 'Bluetooth Radar',
+  protection: 'Protection Modules',
+  devices: 'Devices',
+  learn: 'Security Guide',
+  settings: 'Settings',
+  events: 'Event Log',
 };
 
 export function TopBar() {
@@ -61,7 +61,7 @@ export function TopBar() {
   return (
     <header className="z-20 flex items-center gap-3 border-b border-white/[0.06] bg-app/85 px-4 pb-3 pt-[max(14px,env(safe-area-inset-top))] backdrop-blur-xl">
       {sub ? (
-        <button type="button" onClick={back} aria-label="Πίσω" className="rounded-full bg-white/5 p-2 text-slate-200 hover:bg-white/10">
+        <button type="button" onClick={back} aria-label="Back" className="rounded-full bg-white/5 p-2 text-slate-200 hover:bg-white/10">
           <ArrowLeft size={20} />
         </button>
       ) : (
@@ -71,10 +71,10 @@ export function TopBar() {
         <div className="truncate text-[17px] font-bold leading-tight text-white">{TITLES[screen]}</div>
         <button type="button" onClick={() => openSheet('location')} className="flex items-center gap-1.5 text-[11.5px] text-slate-400 hover:text-slate-200">
           <span className={cn('h-1.5 w-1.5 rounded-full', dot)} />
-          Προστασία {master.toUpperCase()} · <MapPin size={11} /> {LOCATION_LABEL[location]}
+          Protection {master.toUpperCase()} · <MapPin size={11} /> {LOCATION_LABEL[location]}
         </button>
       </div>
-      <button type="button" onClick={() => go('events')} aria-label="Συμβάντα" className="relative rounded-full bg-white/5 p-2.5 text-slate-200 hover:bg-white/10">
+      <button type="button" onClick={() => go('events')} aria-label="Events" className="relative rounded-full bg-white/5 p-2.5 text-slate-200 hover:bg-white/10">
         <Bell size={19} />
         {unread > 0 && (
           <span className="absolute -right-0.5 -top-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white ring-2 ring-app">
@@ -82,7 +82,7 @@ export function TopBar() {
           </span>
         )}
       </button>
-      <button type="button" onClick={() => go('settings')} aria-label="Ρυθμίσεις" className="rounded-full bg-white/5 p-2.5 text-slate-200 hover:bg-white/10">
+      <button type="button" onClick={() => go('settings')} aria-label="Settings" className="rounded-full bg-white/5 p-2.5 text-slate-200 hover:bg-white/10">
         <SettingsIcon size={19} />
       </button>
     </header>
@@ -90,11 +90,11 @@ export function TopBar() {
 }
 
 const NAV: { id: Screen; label: string; icon: typeof House }[] = [
-  { id: 'home', label: 'Αρχική', icon: House },
-  { id: 'radar', label: 'Ραντάρ', icon: Radar },
-  { id: 'protection', label: 'Προστασία', icon: ShieldCheck },
-  { id: 'devices', label: 'Συσκευές', icon: MonitorSmartphone },
-  { id: 'learn', label: 'Οδηγός', icon: GraduationCap },
+  { id: 'home', label: 'Home', icon: House },
+  { id: 'radar', label: 'Radar', icon: Radar },
+  { id: 'protection', label: 'Shields', icon: ShieldCheck },
+  { id: 'devices', label: 'Devices', icon: MonitorSmartphone },
+  { id: 'learn', label: 'Guide', icon: GraduationCap },
 ];
 
 export function BottomNav() {
@@ -161,7 +161,7 @@ export function HelpSheet() {
           <p className="whitespace-pre-line text-[14.5px] leading-relaxed text-slate-200">{help.body}</p>
           {help.tips?.length ? (
             <div className="rounded-2xl bg-white/[0.04] p-3.5">
-              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Συμβουλές</div>
+              <div className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tips</div>
               <ul className="space-y-2">
                 {help.tips.map((t) => (
                   <li key={t} className="flex gap-2 text-[13px] leading-snug text-slate-300">
@@ -175,13 +175,13 @@ export function HelpSheet() {
           {help.more && (
             <div>
               <button type="button" onClick={() => setMore((v) => !v)} className="flex items-center gap-1 text-sm font-semibold text-sky-300">
-                Για προχωρημένους <ChevronDown size={16} className={cn('transition', more && 'rotate-180')} />
+                Technical details <ChevronDown size={16} className={cn('transition', more && 'rotate-180')} />
               </button>
               {more && <p className="mt-2 rounded-2xl border border-white/10 bg-black/25 p-3.5 text-[12.5px] leading-relaxed text-slate-300">{help.more}</p>}
             </div>
           )}
           <Button onClick={close} className="w-full">
-            Κατάλαβα
+            Got it
           </Button>
         </div>
       )}
@@ -190,10 +190,10 @@ export function HelpSheet() {
 }
 
 const REQ_META = {
-  pair: { icon: Link2, title: 'Αίτημα σύζευξης Bluetooth' },
-  file: { icon: FileText, title: 'Εισερχόμενο αρχείο' },
-  vcard: { icon: Contact, title: 'Εισερχόμενη κάρτα επαφής' },
-  access: { icon: Lock, title: 'Αίτημα πρόσβασης σε δεδομένα' },
+  pair: { icon: Link2, title: 'Bluetooth Pairing Request' },
+  file: { icon: FileText, title: 'Incoming Bluetooth File' },
+  vcard: { icon: Contact, title: 'Incoming Contact Card' },
+  access: { icon: Lock, title: 'Data Access Request' },
 };
 
 export function RequestModal() {
@@ -232,33 +232,33 @@ export function RequestModal() {
             </div>
           </div>
           <div className="mt-4 rounded-2xl bg-black/25 p-3.5">
-            <div className="text-[15px] font-semibold text-white">«{r.deviceName}»</div>
+            <div className="text-[15px] font-semibold text-white">“{r.deviceName}”</div>
             <div className="font-mono text-[11px] text-slate-400">{maskMac(r.mac)}</div>
             <div className="mt-2 text-[13px] text-slate-300">{r.detail}</div>
             {r.pin && (
               <div className="mt-3 text-center">
-                <div className="text-[11px] text-slate-400">Κωδικός σύζευξης</div>
+                <div className="text-[11px] text-slate-400">Pairing passkey</div>
                 <div className="font-mono text-2xl font-bold tracking-[0.3em] text-white">{r.pin}</div>
               </div>
             )}
           </div>
           <Hint className="mt-3">
-            Δεν ξεκινήσατε εσείς αυτή τη σύνδεση; Πατήστε <b>Απόρριψη</b>. Τα αιτήματα από άγνωστες συσκευές είναι ο πιο συνηθισμένος τρόπος επίθεσης.
+            Didn’t initiate this connection yourself? Tap <b>Reject</b>. Unsolicited prompts from unknown devices are one of the most common attack vectors.
           </Hint>
           <button type="button" onClick={() => setWhy((v) => !v)} className="mt-3 flex items-center gap-1 text-[12.5px] font-semibold text-sky-300">
-            Γιατί είναι ύποπτο; <ChevronDown size={14} className={cn('transition', why && 'rotate-180')} />
+            Why is this suspicious? <ChevronDown size={14} className={cn('transition', why && 'rotate-180')} />
           </button>
           {why && <p className="mt-1.5 text-[12.5px] leading-relaxed text-slate-300">{r.explanation}</p>}
           <div className="mt-4 grid grid-cols-2 gap-2">
             <Button variant="secondary" onClick={() => resolve(true)}>
-              Αποδοχή
+              Accept
             </Button>
             <Button variant="success" icon={ShieldCheck} onClick={() => resolve(false)}>
-              Απόρριψη
+              Reject
             </Button>
           </div>
           <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-slate-500">
-            Αυτόματη απόρριψη σε {Math.max(0, left)} δευτ. <SimBadge label="ΑΣΚΗΣΗ" />
+            Auto-rejects in {Math.max(0, left)}s <SimBadge label="PRACTICE" />
           </div>
         </div>
       </div>
@@ -267,9 +267,9 @@ export function RequestModal() {
 }
 
 const LOCS: { id: LocationCtx; icon: typeof House; desc: string }[] = [
-  { id: 'home', icon: House, desc: 'Έμπιστη τοποθεσία. Επιτρέπεται το pairing και η προστασία λειτουργεί όπως την ρυθμίσατε.' },
-  { id: 'work', icon: Building, desc: 'Έμπιστη τοποθεσία, με περισσότερες κοντινές συσκευές.' },
-  { id: 'public', icon: Coffee, desc: 'Καφετέρια, μετρό, εμπορικό κέντρο, αεροδρόμιο. Πολύ περισσότερες απειλές — η AUTO ανεβάζει όλη την προστασία στο μέγιστο.' },
+  { id: 'home', icon: House, desc: 'Trusted location. Pairing is allowed and protection modules run as individually configured.' },
+  { id: 'work', icon: Building, desc: 'Trusted location with higher nearby device density.' },
+  { id: 'public', icon: Coffee, desc: 'Café, subway, mall, or airport. Far higher threat exposure — AUTO mode escalates all protection modules to ON.' },
 ];
 
 export function LocationSheet() {
@@ -279,9 +279,9 @@ export function LocationSheet() {
   const setLocation = useStore((s) => s.setLocation);
   const useGps = useStore((s) => s.settings.useGps);
   return (
-    <BottomSheet open={open} onClose={() => openSheet(null)} title="Πού βρίσκεστε;" icon={<IconBox icon={MapPin} size="sm" />}>
+    <BottomSheet open={open} onClose={() => openSheet(null)} title="Where are you right now?" icon={<IconBox icon={MapPin} size="sm" />}>
       <div className="space-y-2.5">
-        <Hint>Η τοποθεσία επηρεάζει τις αυτόματες (AUTO) αποφάσεις: σε δημόσιους χώρους οι επιθέσεις είναι πιο πιθανές, οπότε η εφαρμογή γίνεται αυστηρότερη και μπλοκάρει το pairing.</Hint>
+        <Hint>Your location context guides AUTO decisions: in public spaces attacks are much more likely, so BlueShield tightens protection and blocks new pairing.</Hint>
         {LOCS.map((l) => (
           <button
             key={l.id}
@@ -295,7 +295,7 @@ export function LocationSheet() {
             <IconBox icon={l.icon} tone={l.id === 'public' ? 'amber' : 'sky'} />
             <div className="flex-1">
               <div className="flex items-center gap-2 font-semibold text-white">
-                {LOCATION_LABEL[l.id]} {l.id !== 'public' && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">Έμπιστη</span>}
+                {LOCATION_LABEL[l.id]} {l.id !== 'public' && <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-300">Trusted</span>}
               </div>
               <div className="mt-0.5 text-[12.5px] leading-snug text-slate-400">{l.desc}</div>
             </div>
@@ -303,7 +303,7 @@ export function LocationSheet() {
           </button>
         ))}
         <p className="pt-1 text-[12px] text-slate-500">
-          {useGps ? 'Ο αυτόματος εντοπισμός μέσω GPS είναι ενεργός.' : 'Συμβουλή: ενεργοποιήστε τον αυτόματο εντοπισμό με GPS από τις Ρυθμίσεις → Τοποθεσίες.'}
+          {useGps ? 'Automatic GPS geofencing is active.' : 'Tip: enable automatic GPS geofencing in Settings → Locations.'}
         </p>
       </div>
     </BottomSheet>
@@ -318,17 +318,17 @@ export function ScoreSheet() {
     <BottomSheet
       open={open}
       onClose={() => openSheet(null)}
-      title="Πώς υπολογίζεται η βαθμολογία"
+      title="How your score is calculated"
       icon={<IconBox icon={Sparkles} size="sm" />}
       footer={
         <Button icon={ScanSearch} className="w-full" onClick={() => openSheet('audit')}>
-          Έλεγχος & διόρθωση με ένα πάτημα
+          Run Security Audit & one-tap fix
         </Button>
       }
     >
       <div className="space-y-4">
         <p className="text-[13.5px] leading-relaxed text-slate-300">
-          Η βαθμολογία (0–100) δείχνει πόσο καλά προστατεύεται το κινητό σας. Αποτελείται από τρία μέρη. Κάθε γραμμή που δεν είναι πλήρης, είναι κάτι που μπορείτε να βελτιώσετε.
+          Your Security Score (0–100) summarizes how well your phone is protected against Bluetooth threats across three pillars. Any incomplete item shows exactly where you can improve.
         </p>
         {score.parts.map((p) => (
           <div key={p.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3.5">
@@ -354,7 +354,7 @@ export function ScoreSheet() {
         ))}
         {score.penalty > 0 && (
           <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 p-3.5 text-[12.5px] text-rose-100">
-            <b>−{score.penalty} πόντοι:</b> επιθέσεις που δεν αποκλείστηκαν ή αιτήματα που εγκρίθηκαν τα τελευταία 10 λεπτά.
+            <b>−{score.penalty} pts:</b> unblocked attacks or accepted suspicious prompts in the last 10 minutes.
           </div>
         )}
       </div>

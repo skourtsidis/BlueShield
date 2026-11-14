@@ -14,9 +14,9 @@ import { BottomSheet, Button, Card, DEVICE_TYPE_LABEL, deviceIcon, Hint, IconBox
 import { StaleBars } from '../components/charts';
 
 const LEVEL = {
-  safe: { t: 'Ασφαλές όνομα', c: 'bg-emerald-500/15 text-emerald-300', I: CircleCheck },
-  medium: { t: 'Μέτριος κίνδυνος', c: 'bg-amber-500/15 text-amber-300', I: TriangleAlert },
-  danger: { t: 'Αποκαλύπτει πολλά', c: 'bg-rose-500/15 text-rose-300', I: OctagonAlert },
+  safe: { t: 'Privacy-safe name', c: 'bg-emerald-500/15 text-emerald-300', I: CircleCheck },
+  medium: { t: 'Moderate leak', c: 'bg-amber-500/15 text-amber-300', I: TriangleAlert },
+  danger: { t: 'Reveals too much', c: 'bg-rose-500/15 text-rose-300', I: OctagonAlert },
 };
 
 function ThisDevice() {
@@ -33,15 +33,15 @@ function ThisDevice() {
     <Card className="bg-gradient-to-br from-violet-500/[0.10] to-surface/80">
       <SectionTitle
         icon={Smartphone}
-        title="Αυτή η συσκευή"
+        title="This Phone"
         action={sys?.live ? <LiveBadge /> : undefined}
         help={{
-          title: 'Το όνομα της συσκευής σας',
-          body: 'Όταν το Bluetooth είναι ανοιχτό, το όνομα της συσκευής σας μπορεί να το δει οποιοσδήποτε κοντά σας. Ονόματα όπως «iPhone του Γιώργου» ή «Samsung S23» αποκαλύπτουν ποιος είστε και ποιο ακριβώς μοντέλο έχετε — άρα και ποιες ευπάθειες μπορεί να δοκιμάσει ένας επιτιθέμενος.\n\nΔιαλέξτε ένα ουδέτερο όνομα, π.χ. «Nova-7F3A».',
+          title: 'Your Device Name',
+          body: 'Whenever Bluetooth is active, your broadcast device name can be seen by people nearby. Names like "George’s iPhone" or "Samsung S23" reveal both who you are and your exact phone model — telling attackers which model-specific exploits to try.\n\nPick a neutral alias instead, such as "Nova-7F3A".',
         }}
       />
       <div className="rounded-2xl bg-black/25 p-3.5">
-        <div className="text-[11px] uppercase tracking-wider text-slate-500">Όνομα Bluetooth</div>
+        <div className="text-[11px] uppercase tracking-wider text-slate-500">Bluetooth Name</div>
         <div className="mt-0.5 text-lg font-bold text-white">{name}</div>
         <span className={cn('mt-1.5 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', L.c)}>
           <L.I size={12} /> {L.t}
@@ -56,7 +56,7 @@ function ThisDevice() {
           </ul>
         )}
         <Button size="sm" className="mt-3" icon={Pencil} onClick={() => openSheet('rename')}>
-          Αλλαγή ονόματος
+          Rename device
         </Button>
       </div>
       {sys && (
@@ -69,10 +69,10 @@ function ThisDevice() {
           {discoverable ? <Eye size={18} /> : <EyeOff size={18} />}
         </span>
         <div className="flex-1">
-          <div className="text-sm font-medium text-slate-100">Ορατότητα (discoverable)</div>
-          <div className="text-xs text-slate-400">{discoverable && until ? `Ορατό — κλείνει σε ${fmtCountdown(until - now)}` : 'Κρυφό από αγνώστους'}</div>
+          <div className="text-sm font-medium text-slate-100">Discoverable visibility</div>
+          <div className="text-xs text-slate-400">{discoverable && until ? `Visible — auto-hides in ${fmtCountdown(until - now)}` : 'Hidden from strangers'}</div>
         </div>
-        <Toggle checked={discoverable} onChange={setDiscoverable} label="Ορατότητα" />
+        <Toggle checked={discoverable} onChange={setDiscoverable} label="Discoverable" />
       </div>
     </Card>
   );
@@ -82,7 +82,7 @@ export function RenameSheet() {
   const open = useStore((s) => s.sheet === 'rename');
   const openSheet = useStore((s) => s.openSheet);
   return (
-    <BottomSheet open={open} onClose={() => openSheet(null)} title="Αλλαγή ονόματος συσκευής" icon={<IconBox icon={Pencil} size="sm" />}>
+    <BottomSheet open={open} onClose={() => openSheet(null)} title="Change Device Name" icon={<IconBox icon={Pencil} size="sm" />}>
       <RenameContent onDone={() => openSheet(null)} />
     </BottomSheet>
   );
@@ -97,65 +97,63 @@ function RenameContent({ onDone }: { onDone: () => void }) {
   const a = analyzeName(val);
   const L = LEVEL[a.level];
   return (
-    <>
-      <div className="space-y-4">
-        <div>
-          <input
-            value={val}
-            onChange={(e) => setVal(e.target.value)}
-            maxLength={32}
-            className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-[15px] text-white outline-none focus:border-sky-400/60"
-            placeholder="π.χ. Nova-7F3A"
-          />
-          <div className={cn('mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', L.c)}>
-            <L.I size={12} /> {L.t}
-          </div>
-          {a.issues.map((i) => (
-            <p key={i} className="mt-1 text-[12px] text-slate-400">
-              • {i}
-            </p>
+    <div className="space-y-4">
+      <div>
+        <input
+          value={val}
+          onChange={(e) => setVal(e.target.value)}
+          maxLength={32}
+          className="w-full rounded-2xl border border-white/10 bg-black/30 px-4 py-3 text-[15px] text-white outline-none focus:border-sky-400/60"
+          placeholder="e.g. Nova-7F3A"
+        />
+        <div className={cn('mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-semibold', L.c)}>
+          <L.I size={12} /> {L.t}
+        </div>
+        {a.issues.map((i) => (
+          <p key={i} className="mt-1 text-[12px] text-slate-400">
+            • {i}
+          </p>
+        ))}
+      </div>
+      <div>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-[12px] font-semibold uppercase tracking-wide text-slate-400">Safe neutral suggestions</span>
+          <button type="button" onClick={() => setSugg(Array.from({ length: 4 }, suggestName))} className="flex items-center gap-1 text-[12px] font-semibold text-sky-300">
+            <Shuffle size={13} /> Refresh
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          {sugg.map((s) => (
+            <button key={s} type="button" onClick={() => setVal(s)} className={cn('rounded-xl border px-3 py-2 font-mono text-[13px] transition', val === s ? 'border-sky-400/60 bg-sky-500/15 text-white' : 'border-white/10 bg-white/[0.03] text-slate-300')}>
+              {s}
+            </button>
           ))}
         </div>
-        <div>
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-[12px] font-semibold uppercase tracking-wide text-slate-400">Ασφαλείς προτάσεις</span>
-            <button type="button" onClick={() => setSugg(Array.from({ length: 4 }, suggestName))} className="flex items-center gap-1 text-[12px] font-semibold text-sky-300">
-              <Shuffle size={13} /> Νέες
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {sugg.map((s) => (
-              <button key={s} type="button" onClick={() => setVal(s)} className={cn('rounded-xl border px-3 py-2 font-mono text-[13px] transition', val === s ? 'border-sky-400/60 bg-sky-500/15 text-white' : 'border-white/10 bg-white/[0.03] text-slate-300')}>
-                {s}
-              </button>
-            ))}
-          </div>
-        </div>
-        <Button
-          className="w-full"
-          onClick={() => {
-            setDeviceName(val);
-            onDone();
-          }}
-        >
-          Αποθήκευση
-        </Button>
-        <div className="rounded-2xl bg-white/[0.04] p-3.5 text-[12.5px] leading-relaxed text-slate-300">
-          <b className="text-white">Αλλάξτε το και στο ίδιο το κινητό:</b>
-          <ul className="mt-1.5 space-y-1 text-slate-400">
-            <li>• Samsung: Ρυθμίσεις → Σχετικά με το τηλέφωνο → Επεξεργασία</li>
-            <li>• Pixel / Android: Ρυθμίσεις → Συνδεδεμένες συσκευές → Προτιμήσεις σύνδεσης → Bluetooth → Όνομα συσκευής</li>
-            <li>• Xiaomi: Ρυθμίσεις → Σχετικά με το τηλέφωνο → Όνομα συσκευής</li>
-            <li>• iPhone: Ρυθμίσεις → Γενικά → Πληροφορίες → Όνομα</li>
-          </ul>
-          {native && (
-            <Button size="sm" variant="secondary" className="mt-3" icon={Settings2} onClick={() => void nativeOpenSettings()}>
-              Άνοιγμα ρυθμίσεων Bluetooth
-            </Button>
-          )}
-        </div>
       </div>
-    </>
+      <Button
+        className="w-full"
+        onClick={() => {
+          setDeviceName(val);
+          onDone();
+        }}
+      >
+        Save Name
+      </Button>
+      <div className="rounded-2xl bg-white/[0.04] p-3.5 text-[12.5px] leading-relaxed text-slate-300">
+        <b className="text-white">Also update it in your phone’s OS Settings:</b>
+        <ul className="mt-1.5 space-y-1 text-slate-400">
+          <li>• Samsung: Settings → About phone → Edit</li>
+          <li>• Pixel / Android: Settings → Connected devices → Connection preferences → Bluetooth → Device name</li>
+          <li>• Xiaomi: Settings → About phone → Device name</li>
+          <li>• iPhone: Settings → General → About → Name</li>
+        </ul>
+        {native && (
+          <Button size="sm" variant="secondary" className="mt-3" icon={Settings2} onClick={() => void nativeOpenSettings()}>
+            Open Bluetooth Settings
+          </Button>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -169,25 +167,25 @@ export function PairSheet() {
   const radioOn = useStore((s) => s.radioOn);
   const candidates = nearby.filter((d) => !paired.some((p) => p.name === d.name) && d.type !== 'beacon');
   return (
-    <BottomSheet open={open} onClose={() => openSheet(null)} title="Σύζευξη νέας συσκευής" icon={<IconBox icon={Link2} size="sm" />}>
+    <BottomSheet open={open} onClose={() => openSheet(null)} title="Pair New Device" icon={<IconBox icon={Link2} size="sm" />}>
       <div className="space-y-3">
         <div className={cn('flex items-start gap-2 rounded-2xl p-3 text-[12.5px] leading-snug', location === 'public' ? 'bg-amber-500/10 text-amber-100' : 'bg-emerald-500/10 text-emerald-100')}>
           <MapPin size={15} className="mt-0.5 shrink-0" />
           {location === 'public'
-            ? 'Βρίσκεστε σε δημόσιο χώρο. Το pairing εδώ είναι ευάλωτο σε sniffing — η εφαρμογή θα το μπλοκάρει αν είναι ενεργή η Αντι-Υποκλοπή ή ο κανόνας «μόνο σε έμπιστες τοποθεσίες».'
-            : `Βρίσκεστε σε έμπιστη τοποθεσία (${LOCATION_LABEL[location]}) — ιδανικό μέρος για pairing.`}
+            ? 'You are in a public place. First-time pairing here is exposed to packet sniffing — BlueShield blocks it whenever Anti-Sniffing or "Pair only in trusted places" is active.'
+            : `You are in a trusted place (${LOCATION_LABEL[location]}) — safe environment for pairing.`}
         </div>
         {!radioOn ? (
-          <p className="py-6 text-center text-[13px] text-slate-400">Ενεργοποιήστε πρώτα το Bluetooth.</p>
+          <p className="py-6 text-center text-[13px] text-slate-400">Enable Bluetooth first.</p>
         ) : candidates.length === 0 ? (
-          <p className="py-6 text-center text-[13px] text-slate-400">Δεν βρέθηκαν διαθέσιμες συσκευές.</p>
+          <p className="py-6 text-center text-[13px] text-slate-400">No nearby pairable devices found.</p>
         ) : (
           <ul className="divide-y divide-white/[0.06]">
             {candidates.map((d) => (
               <li key={d.id} className="flex items-center gap-3 py-2.5">
                 <IconBox icon={deviceIcon(d.type, d.tags.includes('hacktool'))} size="sm" tone={d.risk === 'high' ? 'rose' : 'slate'} />
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13.5px] font-medium text-slate-100">{d.name || d.label || 'Άγνωστη συσκευή'}</div>
+                  <div className="truncate text-[13.5px] font-medium text-slate-100">{d.name || d.label || 'Unknown device'}</div>
                   <RiskBadge risk={d.risk} />
                 </div>
                 <Button
@@ -197,23 +195,23 @@ export function PairSheet() {
                     if (pairNew(d.id)) openSheet(null);
                   }}
                 >
-                  Σύζευξη
+                  Pair
                 </Button>
               </li>
             ))}
           </ul>
         )}
-        <Hint>Κάντε σύζευξη μόνο με συσκευές που αναγνωρίζετε και κρατάτε στα χέρια σας. Ποτέ με συσκευές με «δελεαστικά» ή άγνωστα ονόματα.</Hint>
+        <Hint>Only pair with accessories you recognize and physically hold. Never pair with bait-named or unfamiliar devices.</Hint>
       </div>
     </BottomSheet>
   );
 }
 
 const PERMS: { k: keyof Permissions; label: string; I: typeof Contact }[] = [
-  { k: 'contacts', label: 'Επαφές', I: Contact },
-  { k: 'messages', label: 'Μηνύματα', I: MessageSquare },
-  { k: 'calls', label: 'Κλήσεις & μικρόφωνο', I: Phone },
-  { k: 'files', label: 'Αρχεία', I: FolderOpen },
+  { k: 'contacts', label: 'Contacts', I: Contact },
+  { k: 'messages', label: 'Messages', I: MessageSquare },
+  { k: 'calls', label: 'Calls & microphone', I: Phone },
+  { k: 'files', label: 'Files', I: FolderOpen },
 ];
 
 function PairedItem({ p }: { p: PairedDevice }) {
@@ -236,17 +234,17 @@ function PairedItem({ p }: { p: PairedDevice }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[14px] font-medium text-slate-100">{p.name}</div>
           <div className="truncate text-[11.5px] text-slate-400">
-            {p.note ?? DEVICE_TYPE_LABEL[p.type]} · {p.connected ? 'σε χρήση τώρα' : `χρήση ${timeAgo(p.lastUsed)}`}
+            {p.note ?? DEVICE_TYPE_LABEL[p.type]} · {p.connected ? 'in use now' : `used ${timeAgo(p.lastUsed)}`}
           </div>
           <div className="mt-1 flex flex-wrap gap-1">
-            {stale && <span className="rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">Παλιά · {days} ημ.</span>}
+            {stale && <span className="rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">Stale · {days}d</span>}
             {p.secure === 'legacy' && <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">Legacy pairing</span>}
             {!p.encrypted && (
               <span className="flex items-center gap-0.5 rounded-full bg-rose-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-rose-300">
-                <LockOpen size={9} /> Χωρίς κρυπτογράφηση
+                <LockOpen size={9} /> Unencrypted
               </span>
             )}
-            {p.keyBytes < 16 && <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">Κλειδί {p.keyBytes}B</span>}
+            {p.keyBytes < 16 && <span className="rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-amber-300">Key {p.keyBytes}B</span>}
           </div>
         </div>
         <ChevronDown size={18} className={cn('shrink-0 text-slate-500 transition', open && 'rotate-180')} />
@@ -255,26 +253,26 @@ function PairedItem({ p }: { p: PairedDevice }) {
         <div className="anim-fade mt-3 space-y-3 rounded-2xl bg-black/20 p-3">
           <dl className="grid grid-cols-2 gap-2 text-[12px]">
             <div>
-              <dt className="text-slate-500">Διεύθυνση</dt>
+              <dt className="text-slate-500">Address</dt>
               <dd className="font-mono text-slate-200">{maskMac(p.mac)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Σύζευξη από</dt>
+              <dt className="text-slate-500">Paired on</dt>
               <dd className="text-slate-200">{fmtDate(p.pairedAt)}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Ασφάλεια</dt>
-              <dd className={p.secure === 'sc' ? 'text-emerald-300' : 'text-amber-300'}>{p.secure === 'sc' ? 'Secure Connections' : 'Legacy (παλιό)'}</dd>
+              <dt className="text-slate-500">Security</dt>
+              <dd className={p.secure === 'sc' ? 'text-emerald-300' : 'text-amber-300'}>{p.secure === 'sc' ? 'Secure Connections' : 'Legacy (older)'}</dd>
             </div>
             <div>
-              <dt className="text-slate-500">Κλειδί</dt>
+              <dt className="text-slate-500">Encryption key</dt>
               <dd className={p.keyBytes >= 16 ? 'text-emerald-300' : 'text-amber-300'}>
-                {p.keyBytes} bytes ({p.keyBytes * 8} bit)
+                {p.keyBytes} bytes ({p.keyBytes * 8}-bit)
               </dd>
             </div>
           </dl>
           <div>
-            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Δικαιώματα</div>
+            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-slate-400">Permissions</div>
             <div className="space-y-1.5">
               {PERMS.map(({ k, label, I: PI }) => (
                 <div key={k} className="flex items-center gap-2">
@@ -287,7 +285,7 @@ function PairedItem({ p }: { p: PairedDevice }) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             <Button size="sm" variant="secondary" icon={p.connected ? Ban : Link2} onClick={() => toggleConn(p.id)}>
-              {p.connected ? 'Αποσύνδεση' : 'Σύνδεση'}
+              {p.connected ? 'Disconnect' : 'Connect'}
             </Button>
             <Button
               size="sm"
@@ -301,7 +299,7 @@ function PairedItem({ p }: { p: PairedDevice }) {
                 }
               }}
             >
-              {confirm ? 'Σίγουρα;' : 'Αφαίρεση'}
+              {confirm ? 'Confirm?' : 'Forget'}
             </Button>
           </div>
         </div>
@@ -330,15 +328,15 @@ export function Devices() {
       <Card>
         <SectionTitle
           icon={Plus}
-          title="Σύζευξη νέας συσκευής"
-          subtitle={`Τοποθεσία: ${LOCATION_LABEL[location]} ${location === 'public' ? '(μη έμπιστη)' : '(έμπιστη)'}`}
+          title="Pair a New Device"
+          subtitle={`Location: ${LOCATION_LABEL[location]} ${location === 'public' ? '(untrusted)' : '(trusted)'}`}
           help={{
-            title: 'Ασφαλής σύζευξη (pairing)',
-            body: 'Τη στιγμή της πρώτης σύνδεσης οι δύο συσκευές ανταλλάσσουν τα κλειδιά ασφαλείας. Αν κάποιος «ακούει» εκείνη τη στιγμή (sniffing), μπορεί να τα υποκλέψει.\n\nΓι’ αυτό: κάνετε pairing στο σπίτι, όχι σε καφετέρια ή μετρό. Η εφαρμογή ελέγχει την τοποθεσία σας και μπλοκάρει το pairing σε δημόσιους χώρους όταν είναι ενεργή η Αντι-Υποκλοπή.',
+            title: 'Safe Pairing',
+            body: 'During first-time pairing, two devices exchange secret encryption keys. If an attacker is sniffing nearby at that exact moment, they can capture the key.\n\nPair new gear at home rather than in a café or subway. BlueShield checks your location and blocks pairing in public places whenever Anti-Sniffing is enabled.',
           }}
         />
         <Button className="w-full" icon={Bluetooth} onClick={() => openSheet('pair')}>
-          Αναζήτηση & σύζευξη
+          Scan & Pair
         </Button>
       </Card>
 
@@ -346,11 +344,11 @@ export function Devices() {
         <div className="pt-2">
           <SectionTitle
             icon={Link2}
-            title={`Αποθηκευμένες συσκευές (${paired.length})`}
-            subtitle="Πατήστε μια συσκευή για λεπτομέρειες και δικαιώματα"
+            title={`Saved Devices (${paired.length})`}
+            subtitle="Tap any device for security details and permissions"
             help={{
-              title: 'Αποθηκευμένες (συζευγμένες) συσκευές',
-              body: 'Είναι όλες οι συσκευές που το κινητό σας «εμπιστεύεται» και στις οποίες συνδέεται αυτόματα. Κάθε μία είναι μια πιθανή «ταυτότητα» που μπορεί να πλαστογραφήσει ένας επιτιθέμενος (επίθεση BIAS).\n\nΔιαγράψτε όσες δεν χρησιμοποιείτε — ειδικά ενοικιαζόμενα αυτοκίνητα και παλιά ακουστικά — και δώστε σε κάθε συσκευή μόνο τα δικαιώματα που χρειάζεται.',
+              title: 'Saved (Bonded) Devices',
+              body: 'These are all the accessories your phone "trusts" and reconnects to automatically. Every saved entry is a trusted identity an attacker could spoof in a BIAS impersonation attack.\n\nForget devices you no longer use — especially rental cars and old headsets — and grant each device only the permissions it actually needs.',
             }}
           />
         </div>
@@ -358,42 +356,42 @@ export function Devices() {
           {sorted.map((p) => (
             <PairedItem key={p.id} p={p} />
           ))}
-          {paired.length === 0 && <p className="py-6 text-center text-[13px] text-slate-400">Καμία αποθηκευμένη συσκευή.</p>}
+          {paired.length === 0 && <p className="py-6 text-center text-[13px] text-slate-400">No saved Bluetooth devices.</p>}
         </div>
       </Card>
 
       <Card>
         <SectionTitle
           icon={CalendarClock}
-          title="Ημέρες χωρίς χρήση"
-          subtitle="Οι κόκκινες μπάρες ξεπερνούν το όριο"
-          help={{ title: 'Παλιές συσκευές', body: 'Το γράφημα δείχνει πόσες ημέρες έχει να χρησιμοποιηθεί κάθε αποθηκευμένη συσκευή. Όσες ξεπερνούν το όριο (κόκκινη γραμμή) καλό είναι να διαγραφούν, για προστασία από επιθέσεις πλαστοπροσωπίας (BIAS/Spoofing).' }}
+          title="Days Since Last Use"
+          subtitle="Red bars exceed your stale-device threshold"
+          help={{ title: 'Stale Devices', body: 'Shows how many days each saved Bluetooth device has gone unused. Devices past the dashed red threshold should be forgotten to protect against BIAS/MAC-spoofing attacks.' }}
         />
         {paired.length > 0 && <StaleBars data={paired.map((p) => ({ name: p.name.length > 16 ? p.name.slice(0, 15) + '…' : p.name, days: daysSince(p.lastUsed) }))} threshold={staleDays} />}
         <div className="mt-3 flex items-center gap-2">
-          <span className="text-[12px] text-slate-400">Όριο:</span>
+          <span className="text-[12px] text-slate-400">Limit:</span>
           <Segmented<number>
             size="sm"
             className="flex-1"
             value={staleDays}
             onChange={(v) => updateSettings({ staleDays: v })}
             options={[
-              { value: 30, label: '30 ημ.' },
-              { value: 60, label: '60 ημ.' },
-              { value: 90, label: '90 ημ.' },
-              { value: 180, label: '180 ημ.' },
+              { value: 30, label: '30d' },
+              { value: 60, label: '60d' },
+              { value: 90, label: '90d' },
+              { value: 180, label: '180d' },
             ]}
           />
         </div>
         <Button className="mt-3 w-full" variant={stale.length ? 'danger' : 'secondary'} icon={Trash2} disabled={!stale.length} onClick={() => removeStale()}>
-          {stale.length ? `Καθαρισμός παλιών συσκευών (${stale.length})` : 'Καμία παλιά συσκευή'}
+          {stale.length ? `Clean up stale devices (${stale.length})` : 'No stale devices'}
         </Button>
-        <Hint className="mt-3">Στο κινητό: Ρυθμίσεις → Bluetooth → ⚙ δίπλα στη συσκευή → «Κατάργηση σύζευξης» (iPhone: ⓘ → «Διαγραφή αυτής της συσκευής»).</Hint>
+        <Hint className="mt-3">On your phone: Settings → Bluetooth → ⚙ next to the device → “Forget” / “Unpair” (iPhone: ⓘ → “Forget This Device”).</Hint>
       </Card>
 
       {native && (
         <Card>
-          <SectionTitle icon={Bluetooth} title="Πραγματικές συζευγμένες συσκευές" action={<LiveBadge />} subtitle="Όπως τις βλέπει το Android" />
+          <SectionTitle icon={Bluetooth} title="System Bonded Devices" action={<LiveBadge />} subtitle="Reported directly by Android" />
           {bonded.length ? (
             <ul className="divide-y divide-white/[0.06]">
               {bonded.map((b) => (
@@ -405,18 +403,18 @@ export function Devices() {
               ))}
             </ul>
           ) : (
-            <p className="text-[13px] text-slate-400">Δεν βρέθηκαν συσκευές ή δεν δόθηκε άδεια.</p>
+            <p className="text-[13px] text-slate-400">No bonded devices found or permission not granted.</p>
           )}
           <Button size="sm" variant="secondary" className="mt-3" icon={Settings2} onClick={() => void nativeOpenSettings()}>
-            Άνοιγμα ρυθμίσεων Bluetooth
+            Open Bluetooth Settings
           </Button>
         </Card>
       )}
 
       <Card>
-        <SectionTitle icon={Ban} title={`Αποκλεισμένες συσκευές (${blocked.length})`} subtitle="Τα αιτήματά τους απορρίπτονται αυτόματα" />
+        <SectionTitle icon={Ban} title={`Blocked Devices (${blocked.length})`} subtitle="Prompts from these addresses are rejected automatically" />
         {blocked.length === 0 ? (
-          <p className="text-[13px] text-slate-400">Δεν έχετε αποκλείσει καμία συσκευή. Μπορείτε να το κάνετε από το Ραντάρ.</p>
+          <p className="text-[13px] text-slate-400">You have not blocked any devices yet. You can block suspicious transmitters from the Radar screen.</p>
         ) : (
           <ul className="divide-y divide-white/[0.06]">
             {blocked.map((b) => (
@@ -429,7 +427,7 @@ export function Devices() {
                   </div>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => unblock(b.mac)}>
-                  Άρση
+                  Unblock
                 </Button>
               </li>
             ))}

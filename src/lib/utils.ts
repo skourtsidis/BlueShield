@@ -21,7 +21,7 @@ export function weightedPick<T extends string>(weights: Record<T, number>): T | 
 const hex = '0123456789ABCDEF';
 export const randHex = (n: number) => Array.from({ length: n }, () => hex[randInt(0, 15)]).join('');
 
-/** Δημιουργεί διεύθυνση MAC. Οι τυχαίες (RPA) έχουν τα 2 ανώτερα bit = 01. */
+/** Generates a MAC address. Resolvable Private Addresses (RPA) set the top two bits to 01. */
 export function randomMac(kind: 'public' | 'random' | 'rpa' = 'public') {
   const bytes = Array.from({ length: 6 }, () => randInt(0, 255));
   if (kind === 'rpa') bytes[0] = (bytes[0] & 0x3f) | 0x40;
@@ -44,28 +44,28 @@ export function hashAngle(id: string) {
 
 export function timeAgo(ts: number, now = Date.now()) {
   const s = Math.max(0, Math.round((now - ts) / 1000));
-  if (s < 5) return 'μόλις τώρα';
-  if (s < 60) return `πριν ${s} δευτ.`;
+  if (s < 5) return 'just now';
+  if (s < 60) return `${s}s ago`;
   const m = Math.round(s / 60);
-  if (m < 60) return `πριν ${m} λεπτ${m === 1 ? 'ό' : 'ά'}`;
+  if (m < 60) return `${m}m ago`;
   const h = Math.round(m / 60);
-  if (h < 24) return `πριν ${h} ώρ${h === 1 ? 'α' : 'ες'}`;
+  if (h < 24) return `${h}h ago`;
   const d = Math.round(h / 24);
-  if (d < 60) return `πριν ${d} ημέρ${d === 1 ? 'α' : 'ες'}`;
+  if (d < 60) return `${d}d ago`;
   const mo = Math.round(d / 30);
-  if (mo < 24) return `πριν ${mo} μήν${mo === 1 ? 'α' : 'ες'}`;
-  return `πριν ${Math.round(d / 365)} χρόνια`;
+  if (mo < 24) return `${mo}mo ago`;
+  return `${Math.round(d / 365)}y ago`;
 }
 
 export const daysSince = (ts: number, now = Date.now()) => Math.floor((now - ts) / 86400000);
 
 export function fmtClock(ts: number) {
   const d = new Date(ts);
-  return d.toLocaleTimeString('el-GR', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  return d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
 }
 
 export function fmtDate(ts: number) {
-  return new Date(ts).toLocaleDateString('el-GR', { day: 'numeric', month: 'short', year: 'numeric' });
+  return new Date(ts).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 export function fmtCountdown(ms: number) {
@@ -75,7 +75,7 @@ export function fmtCountdown(ms: number) {
   return `${String(m).padStart(2, '0')}:${String(r).padStart(2, '0')}`;
 }
 
-/** Εκτίμηση απόστασης από RSSI (μοντέλο απώλειας διαδρομής). */
+/** Estimates distance from RSSI using a log-distance path-loss model. */
 export function rssiToMeters(rssi: number, txPower = -59) {
   const n = 2.2;
   return Math.pow(10, (txPower - rssi) / (10 * n));
@@ -83,10 +83,10 @@ export function rssiToMeters(rssi: number, txPower = -59) {
 
 export function distanceLabel(rssi: number) {
   const m = rssiToMeters(rssi);
-  if (m < 1) return 'Πολύ κοντά (<1 μ.)';
-  if (m < 4) return `Κοντά (~${m.toFixed(1)} μ.)`;
-  if (m < 12) return `Μέτρια απόσταση (~${Math.round(m)} μ.)`;
-  return `Μακριά (~${Math.round(m)} μ.)`;
+  if (m < 1) return 'Very close (<1 m)';
+  if (m < 4) return `Close (~${m.toFixed(1)} m)`;
+  if (m < 12) return `Medium (~${Math.round(m)} m)`;
+  return `Far (~${Math.round(m)} m)`;
 }
 
 export function signalBars(rssi: number) {
@@ -97,7 +97,7 @@ export function signalBars(rssi: number) {
   return 0;
 }
 
-/** Είναι η ώρα μέσα σε ένα χρονικό παράθυρο "ΩΩ:ΛΛ"–"ΩΩ:ΛΛ" (υποστηρίζει μετά τα μεσάνυχτα). */
+/** Checks if current time falls within an "HH:MM"–"HH:MM" window (supports overnight ranges). */
 export function inTimeWindow(from: string, to: string, d = new Date()) {
   const toMin = (s: string) => {
     const [h, m] = s.split(':').map(Number);
@@ -111,12 +111,11 @@ export function inTimeWindow(from: string, to: string, d = new Date()) {
 }
 
 const PERSONAL = [
-  'γιώργ', 'γιωργ', 'μαρία', 'μαρια', 'νίκ', 'νικ', 'κώστ', 'κωστ', 'ελέν', 'ελεν', 'δημήτρ', 'δημητρ', 'γιάνν', 'γιανν',
-  'κατερίν', 'κατεριν', 'σοφία', 'σοφια', 'παναγ', 'βασιλ', 'αννα', 'άννα', 'χρήστ', 'χρηστ', 'αλέξ', 'αλεξ', 'θανάσ',
-  'θανασ', 'ειρήν', 'ειρην', 'μιχάλ', 'μιχαλ', 'σπύρ', 'σπυρ', 'στέλ', 'στελ', 'ευα', 'εύα', 'george', 'maria', 'nick',
-  'john', 'kostas', 'eleni', 'dimitris', 'giannis', 'anna', 'alex', 'sofia', 'chris', 'mike', 'katerina', 'nikos',
+  'george', 'maria', 'nick', 'john', 'james', 'robert', 'michael', 'david', 'daniel', 'sarah', 'emily', 'jessica',
+  'anna', 'alex', 'sophia', 'sofia', 'chris', 'mike', 'kate', 'katerina', 'nikos', 'kostas', 'eleni', 'dimitris',
+  'giannis', 'emma', 'olivia', 'liam', 'noah', 'lucas', 'peter', 'paul', 'andrew', 'laura', 'rachel', 'sam', 'tom',
 ];
-const POSSESSIVE = [' του ', ' της ', "'s ", '’s ', ' tou ', ' tis '];
+const POSSESSIVE = ["'s ", '’s ', ' of ', ' my '];
 const MODELS = [
   'iphone', 'ipad', 'galaxy', 'samsung', 'pixel', 'xiaomi', 'redmi', 'poco', 'oneplus', 'huawei', 'honor', 'motorola',
   'moto ', 'nokia', 'xperia', 'sony', 'oppo', 'realme', 'vivo', 'nothing phone', 'sm-', ' s2', ' s1', ' a5', ' a3',
@@ -132,11 +131,11 @@ export function analyzeName(name: string): NameAnalysis {
   const n = ` ${name.toLowerCase()} `;
   const issues: string[] = [];
   if (PERSONAL.some((p) => n.includes(p)) || POSSESSIVE.some((p) => n.includes(p)))
-    issues.push('Περιέχει προσωπικό όνομα — αποκαλύπτει την ταυτότητά σας σε όποιον βρίσκεται κοντά.');
+    issues.push('Contains a personal name — reveals your identity to anyone nearby.');
   if (MODELS.some((m) => n.includes(m)))
-    issues.push('Αποκαλύπτει μάρκα/μοντέλο — ο επιτιθέμενος μαθαίνει ποιες ευπάθειες να δοκιμάσει.');
-  if (/\d{10}|@/.test(n)) issues.push('Περιέχει τηλέφωνο ή email — σοβαρή διαρροή προσωπικών στοιχείων.');
-  if (name.trim().length < 3) issues.push('Πολύ σύντομο όνομα.');
+    issues.push('Reveals your phone brand/model — helps an attacker pick model-specific exploits.');
+  if (/\d{10}|@/.test(n)) issues.push('Contains a phone number or email — serious personal data leak.');
+  if (name.trim().length < 3) issues.push('Name is too short.');
   return { level: issues.length === 0 ? 'safe' : issues.length === 1 ? 'medium' : 'danger', issues };
 }
 

@@ -7,9 +7,9 @@ import { Logo } from './shell';
 import { Button, ModeSwitch } from './ui';
 
 const MODE_TEXT: Record<Mode, { title: string; text: string }> = {
-  on: { title: 'ON — Πάντα ενεργό', text: 'Η λειτουργία δουλεύει συνεχώς, στο μέγιστο. Μέγιστη ασφάλεια, ίσως λίγο πιο «αυστηρή».' },
-  auto: { title: 'AUTO — Έξυπνη επιλογή', text: 'Η εφαρμογή αποφασίζει μόνη της ανάλογα με το πού βρίσκεστε και τον κίνδυνο. Η προτεινόμενη επιλογή για αρχάριους.' },
-  off: { title: 'OFF — Ανενεργό', text: 'Η λειτουργία είναι κλειστή. Για τις μονάδες προστασίας σημαίνει «καμία προστασία». Για το ίδιο το Bluetooth σημαίνει «κλειστό» — άρα η πιο ασφαλής κατάσταση!' },
+  on: { title: 'ON — Always active', text: 'Runs continuously at maximum strength. Highest protection, occasionally stricter.' },
+  auto: { title: 'AUTO — Smart balance', text: 'Adapts automatically based on your location and threat severity. Recommended for beginners.' },
+  off: { title: 'OFF — Disabled', text: 'Turns the feature off. For protection modules it means "no shield". For the Bluetooth radio itself it means "powered off" — the safest state of all!' },
 };
 
 export function Onboarding() {
@@ -32,16 +32,16 @@ export function Onboarding() {
                 <Logo size={92} />
               </div>
             </div>
-            <h1 className="mt-8 text-[28px] font-extrabold leading-tight text-white">Καλώς ήρθατε στο BlueShield</h1>
+            <h1 className="mt-8 text-[28px] font-extrabold leading-tight text-white">Welcome to BlueShield</h1>
             <p className="mt-3 text-[15px] leading-relaxed text-slate-300">
-              Η ασπίδα του κινητού σας απέναντι στους κινδύνους του Bluetooth — με απλά λόγια, χωρίς να χρειάζεται να είστε ειδικός.
+              Your phone’s shield against Bluetooth security threats — explained in plain English, no technical background required.
             </p>
             <div className="mt-7 grid w-full grid-cols-2 gap-2.5 text-left">
               {[
-                { I: Radio, t: 'Υποκλοπές', d: 'Sniffing & αδύναμα κλειδιά' },
-                { I: Bug, t: 'Χακάρισμα', d: 'BlueBorne, Bluebugging κ.ά.' },
-                { I: Footprints, t: 'Παρακολούθηση', d: 'Trackers & beacons' },
-                { I: Zap, t: 'Επιθέσεις DoS', d: 'Κολλήματα & μπαταρία' },
+                { I: Radio, t: 'Eavesdropping', d: 'Sniffing & weak keys' },
+                { I: Bug, t: 'Exploits', d: 'BlueBorne, Bluebugging & more' },
+                { I: Footprints, t: 'Tracking', d: 'Hidden tags & beacons' },
+                { I: Zap, t: 'DoS Floods', d: 'Freezes & battery drain' },
               ].map(({ I, t, d }) => (
                 <div key={t} className="rounded-2xl border border-white/10 bg-white/[0.04] p-3">
                   <I size={18} className="text-sky-300" />
@@ -55,10 +55,10 @@ export function Onboarding() {
 
         {step === 1 && (
           <div className="anim-fade">
-            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-sky-300">Βήμα 2 από 4</div>
-            <h2 className="mt-2 text-2xl font-extrabold text-white">Τα κουμπιά ON / OFF / AUTO</h2>
+            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-sky-300">Step 2 of 4</div>
+            <h2 className="mt-2 text-2xl font-extrabold text-white">The ON / OFF / AUTO switches</h2>
             <p className="mt-2 text-[14.5px] leading-relaxed text-slate-300">
-              Σε όλη την εφαρμογή θα βλέπετε αυτόν τον διακόπτη τριών θέσεων. Δοκιμάστε τον:
+              Throughout the app you will see this three-state switch. Give it a tap:
             </p>
             <div className="mt-6">
               <ModeSwitch value={demo} onChange={setDemo} size="lg" />
@@ -68,20 +68,20 @@ export function Onboarding() {
               <p className="mt-1.5 text-[14px] leading-relaxed text-slate-300">{MODE_TEXT[demo].text}</p>
             </div>
             <p className="mt-4 text-[13px] leading-relaxed text-slate-400">
-              Δίπλα σε κάθε επιλογή υπάρχει το κουμπί <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-sky-300">i</span> — πατήστε το για να δείτε τι ακριβώς κάνει, με απλά λόγια.
+              Next to every setting you will find an <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-[11px] font-bold text-sky-300">i</span> button — tap it anytime for a plain-language explanation.
             </p>
           </div>
         )}
 
         {step === 2 && (
           <div className="anim-fade">
-            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-sky-300">Βήμα 3 από 4</div>
-            <h2 className="mt-2 text-2xl font-extrabold text-white">Πόσο εξοικειωμένοι είστε;</h2>
-            <p className="mt-2 text-[14.5px] text-slate-300">Μπορείτε να το αλλάξετε αργότερα από τις Ρυθμίσεις.</p>
+            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-sky-300">Step 3 of 4</div>
+            <h2 className="mt-2 text-2xl font-extrabold text-white">How familiar are you with security?</h2>
+            <p className="mt-2 text-[14.5px] text-slate-300">You can switch this anytime in Settings.</p>
             <div className="mt-6 space-y-3">
               {[
-                { v: true, I: GraduationCap, t: 'Είμαι αρχάριος', d: 'Θέλω απλές εξηγήσεις και συμβουλές παντού, με παραδείγματα από την καθημερινότητα.' },
-                { v: false, I: Microscope, t: 'Έχω γνώσεις', d: 'Θέλω τεχνικές λεπτομέρειες (CVE, πρωτόκολλα) και λιγότερες υποδείξεις.' },
+                { v: true, I: GraduationCap, t: 'I’m a beginner', d: 'Show helpful tips, everyday analogies, and plain-English guidance on every screen.' },
+                { v: false, I: Microscope, t: 'I know security', d: 'Expand technical details (CVEs, Bluetooth protocols) automatically with fewer hints.' },
               ].map(({ v, I, t, d }) => (
                 <button
                   key={t}
@@ -104,14 +104,14 @@ export function Onboarding() {
 
         {step === 3 && (
           <div className="anim-fade">
-            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-sky-300">Βήμα 4 από 4</div>
-            <h2 className="mt-2 text-2xl font-extrabold text-white">Με ειλικρίνεια: τι κάνει η εφαρμογή</h2>
+            <div className="mt-4 text-xs font-bold uppercase tracking-widest text-sky-300">Step 4 of 4</div>
+            <h2 className="mt-2 text-2xl font-extrabold text-white">Full transparency: what the app does</h2>
             <ul className="mt-5 space-y-2.5">
               {[
-                'Πραγματική σάρωση συσκευών BLE και ανίχνευση trackers (AirTag, SmartTag, Tile) — στην εφαρμογή APK.',
-                'Πραγματική κατάσταση Bluetooth, συζευγμένες συσκευές, έκδοση Android και μπαταρία.',
-                'Έλεγχος διαρροής πληροφοριών μιας συσκευής BLE (Chrome με Web Bluetooth).',
-                'Εκπαιδευτική προσομοίωση επιθέσεων, για να βλέπετε live πώς αντιδρά κάθε προστασία.',
+                'Real BLE device scanning and tracker detection (AirTag, SmartTag, Tile) — in the Android APK.',
+                'Real Bluetooth state, bonded devices, Android OS version, and battery monitoring.',
+                'Live BLE GATT privacy-leak inspection (Chrome with Web Bluetooth).',
+                'Interactive attack simulations so you can watch how each shield responds in real time.',
               ].map((t) => (
                 <li key={t} className="flex gap-2.5 text-[13.5px] leading-snug text-slate-200">
                   <CircleCheck size={18} className="mt-0.5 shrink-0 text-emerald-400" />
@@ -120,11 +120,11 @@ export function Onboarding() {
               ))}
               <li className="flex gap-2.5 text-[13.5px] leading-snug text-slate-300">
                 <CircleX size={18} className="mt-0.5 shrink-0 text-amber-400" />
-                Καμία εφαρμογή (χωρίς root) δεν μπορεί να μπλοκάρει πακέτα μέσα στο Bluetooth του Android ή να το κλείσει μόνη της (Android 13+). Γι’ αυτό η εφαρμογή σάς ειδοποιεί, σας καθοδηγεί και ανοίγει τις σωστές ρυθμίσεις.
+                No non-root Android app can intercept raw Bluetooth stack packets or forcibly turn Bluetooth off on Android 13+. BlueShield alerts you, guides you, and opens the right system settings.
               </li>
             </ul>
             <div className="mt-5 rounded-2xl border border-violet-400/20 bg-violet-500/10 p-3 text-[12.5px] leading-relaxed text-violet-100">
-              Στοιχεία με την ετικέτα <b>LIVE</b> είναι πραγματικά δεδομένα της συσκευής σας. Όσα έχουν την ετικέτα <b>ΠΡΟΣΟΜΟΙΩΣΗ</b> είναι εκπαιδευτικά σενάρια (μπορείτε να τα κλείσετε από τις Ρυθμίσεις).
+              Items badged <b>LIVE</b> come directly from your device hardware. Items badged <b>SIMULATION</b> are safe educational scenarios (you can toggle them off in Settings).
             </div>
           </div>
         )}
@@ -138,16 +138,16 @@ export function Onboarding() {
         </div>
         {step > 0 && (
           <Button variant="secondary" icon={ArrowLeft} onClick={() => setStep((s) => s - 1)}>
-            Πίσω
+            Back
           </Button>
         )}
         {step < last ? (
           <Button onClick={() => setStep((s) => s + 1)}>
-            Επόμενο <ArrowRight size={16} />
+            Next <ArrowRight size={16} />
           </Button>
         ) : (
           <Button variant="success" icon={ShieldCheck} onClick={() => complete(beginner)}>
-            Ξεκινάμε
+            Get Started
           </Button>
         )}
       </div>

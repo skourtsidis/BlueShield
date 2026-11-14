@@ -64,7 +64,7 @@ export function ScoreGauge({ value, color, size = 190 }: { value: number; color:
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-[52px] font-extrabold leading-none tracking-tight text-white tabular-nums">{Math.round(shown)}</span>
-        <span className="mt-1 text-xs font-medium text-slate-400">από 100</span>
+        <span className="mt-1 text-xs font-medium text-slate-400">of 100</span>
       </div>
     </div>
   );
@@ -91,14 +91,14 @@ export function TrafficChart({ data, height = 170, threshold, forceThreshold }: 
             </linearGradient>
           </defs>
           <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
-          <XAxis dataKey="sec" tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(v) => (v === 0 ? 'τώρα' : `${v}s`)} minTickGap={36} axisLine={false} tickLine={false} />
+          <XAxis dataKey="sec" tick={{ fill: '#64748b', fontSize: 10 }} tickFormatter={(v) => (v === 0 ? 'now' : `${v}s`)} minTickGap={36} axisLine={false} tickLine={false} />
           <YAxis domain={[0, Math.ceil(maxY / 50) * 50]} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} width={46} />
-          <Tooltip content={(p: any) => <ChartTip {...p} unit=" /δ" labelFormat={(l: number) => (l === 0 ? 'Τώρα' : `${-l} δευτ. πριν`)} />} cursor={{ stroke: 'rgba(255,255,255,0.15)' }} />
+          <Tooltip content={(p: any) => <ChartTip {...p} unit=" /s" labelFormat={(l: number) => (l === 0 ? 'Now' : `${-l}s ago`)} />} cursor={{ stroke: 'rgba(255,255,255,0.15)' }} />
           {threshold && threshold <= Math.ceil(maxY / 50) * 50 ? (
-            <ReferenceLine y={threshold} stroke="#fb7185" strokeDasharray="5 4" label={{ value: `Όριο ${threshold}`, fill: '#fda4af', fontSize: 10, position: 'insideTopLeft' }} />
+            <ReferenceLine y={threshold} stroke="#fb7185" strokeDasharray="5 4" label={{ value: `Limit ${threshold}`, fill: '#fda4af', fontSize: 10, position: 'insideTopLeft' }} />
           ) : null}
-          <Area type="monotone" dataKey="packets" name="Εισερχόμενα πακέτα" stroke="#38bdf8" fill={`url(#p${gid})`} strokeWidth={2} isAnimationActive={false} dot={false} />
-          <Area type="monotone" dataKey="blocked" name="Αποκλεισμένα" stroke="#34d399" fill={`url(#b${gid})`} strokeWidth={2} isAnimationActive={false} dot={false} />
+          <Area type="monotone" dataKey="packets" name="Incoming packets" stroke="#38bdf8" fill={`url(#p${gid})`} strokeWidth={2} isAnimationActive={false} dot={false} />
+          <Area type="monotone" dataKey="blocked" name="Blocked" stroke="#34d399" fill={`url(#b${gid})`} strokeWidth={2} isAnimationActive={false} dot={false} />
         </AreaChart>
       </ResponsiveContainer>
     </div>
@@ -106,7 +106,7 @@ export function TrafficChart({ data, height = 170, threshold, forceThreshold }: 
 }
 
 export function MiniArea({
-  data, color = '#38bdf8', height = 70, domain, unit = '', name = 'Τιμή', xFormat,
+  data, color = '#38bdf8', height = 70, domain, unit = '', name = 'Value', xFormat,
 }: {
   data: { x: number; v: number }[];
   color?: string;
@@ -156,9 +156,9 @@ export interface DonutDatum {
   value: number;
   color: string;
 }
-export function ThreatDonut({ data, height = 180, selected, onSelect, centerLabel = 'συμβάντα' }: { data: DonutDatum[]; height?: number; selected?: string | null; onSelect?: (id: string | null) => void; centerLabel?: string }) {
+export function ThreatDonut({ data, height = 180, selected, onSelect, centerLabel = 'events' }: { data: DonutDatum[]; height?: number; selected?: string | null; onSelect?: (id: string | null) => void; centerLabel?: string }) {
   const total = data.reduce((a, d) => a + d.value, 0);
-  const rows = total ? data.filter((d) => d.value > 0) : [{ id: 'none', name: 'Κανένα', value: 1, color: '#1e293b' }];
+  const rows = total ? data.filter((d) => d.value > 0) : [{ id: 'none', name: 'None', value: 1, color: '#1e293b' }];
   const sel = rows.find((r) => r.id === selected);
   return (
     <div className="relative" style={{ height }}>
@@ -199,9 +199,9 @@ export function EventsBar({ data, height = 150 }: { data: { label: string; block
           <XAxis dataKey="label" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} minTickGap={14} />
           <YAxis allowDecimals={false} tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} width={40} />
           <Tooltip content={(p: any) => <ChartTip {...p} />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-          <Bar dataKey="blocked" name="Αποκλείστηκαν" stackId="a" fill="#34d399" isAnimationActive={false} />
-          <Bar dataKey="warned" name="Προειδοποιήσεις" stackId="a" fill="#fbbf24" isAnimationActive={false} />
-          <Bar dataKey="allowed" name="Δεν αποκλείστηκαν" stackId="a" fill="#fb7185" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+          <Bar dataKey="blocked" name="Blocked" stackId="a" fill="#34d399" isAnimationActive={false} />
+          <Bar dataKey="warned" name="Warnings" stackId="a" fill="#fbbf24" isAnimationActive={false} />
+          <Bar dataKey="allowed" name="Unblocked" stackId="a" fill="#fb7185" radius={[4, 4, 0, 0]} isAnimationActive={false} />
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -224,14 +224,14 @@ export function KeyBars({ data, min, height = 150 }: { data: { i: number; bytes:
                 <div className="rounded-xl border border-white/10 bg-[#0b1324]/95 px-3 py-2 text-[11px]">
                   <div className="font-semibold text-white">{p.payload[0].payload.device}</div>
                   <div className="text-slate-300">
-                    Κλειδί: <b>{p.payload[0].payload.bytes} bytes</b> ({p.payload[0].payload.bytes * 8} bit)
+                    Key: <b>{p.payload[0].payload.bytes} bytes</b> ({p.payload[0].payload.bytes * 8}-bit)
                   </div>
-                  <div className={p.payload[0].payload.accepted ? 'text-amber-300' : 'text-emerald-300'}>{p.payload[0].payload.accepted ? 'Επιτράπηκε' : 'Απορρίφθηκε ✓'}</div>
+                  <div className={p.payload[0].payload.accepted ? 'text-amber-300' : 'text-emerald-300'}>{p.payload[0].payload.accepted ? 'Allowed' : 'Rejected ✓'}</div>
                 </div>
               ) : null
             }
           />
-          <ReferenceLine y={min} stroke="#38bdf8" strokeDasharray="5 4" label={{ value: `Ελάχιστο ${min}B`, fill: '#7dd3fc', fontSize: 10, position: 'insideBottomLeft' }} />
+          <ReferenceLine y={min} stroke="#38bdf8" strokeDasharray="5 4" label={{ value: `Min ${min}B`, fill: '#7dd3fc', fontSize: 10, position: 'insideBottomLeft' }} />
           <Bar dataKey="bytes" name="Bytes" radius={[4, 4, 0, 0]} isAnimationActive={false}>
             {rows.map((r, i) => (
               <Cell key={i} fill={r.color} opacity={r.accepted ? 1 : 0.45} />
@@ -252,9 +252,9 @@ export function StaleBars({ data, threshold, height }: { data: { name: string; d
           <CartesianGrid stroke="rgba(255,255,255,0.05)" horizontal={false} />
           <XAxis type="number" tick={{ fill: '#64748b', fontSize: 10 }} axisLine={false} tickLine={false} />
           <YAxis type="category" dataKey="name" width={104} tick={{ fill: '#cbd5e1', fontSize: 10.5 }} axisLine={false} tickLine={false} />
-          <Tooltip content={(p: any) => <ChartTip {...p} unit=" ημέρες" />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-          <ReferenceLine x={threshold} stroke="#fb7185" strokeDasharray="5 4" label={{ value: `${threshold} ημ.`, fill: '#fda4af', fontSize: 10, position: 'top' }} />
-          <Bar dataKey="days" name="Χωρίς χρήση" radius={[0, 4, 4, 0]} isAnimationActive={false}>
+          <Tooltip content={(p: any) => <ChartTip {...p} unit=" days" />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
+          <ReferenceLine x={threshold} stroke="#fb7185" strokeDasharray="5 4" label={{ value: `${threshold}d`, fill: '#fda4af', fontSize: 10, position: 'top' }} />
+          <Bar dataKey="days" name="Unused" radius={[0, 4, 4, 0]} isAnimationActive={false}>
             {rows.map((r, i) => (
               <Cell key={i} fill={r.color} />
             ))}
@@ -273,8 +273,8 @@ export function RiskScatter({ data, selected, onSelect, height = 250 }: { data: 
           <ReferenceArea x1={5.5} x2={10.5} y1={5.5} y2={10.5} fill="#fb7185" fillOpacity={0.07} />
           <ReferenceArea x1={0} x2={5.5} y1={0} y2={5.5} fill="#34d399" fillOpacity={0.05} />
           <CartesianGrid stroke="rgba(255,255,255,0.05)" />
-          <XAxis type="number" dataKey="likelihood" name="Πιθανότητα" domain={[0, 10.5]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fill: '#64748b', fontSize: 10 }} label={{ value: 'Πιθανότητα →', fill: '#94a3b8', fontSize: 10, position: 'insideBottom', offset: -10 }} />
-          <YAxis type="number" dataKey="impact" name="Επίπτωση" domain={[0, 10.5]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fill: '#64748b', fontSize: 10 }} label={{ value: 'Επίπτωση →', fill: '#94a3b8', fontSize: 10, angle: -90, position: 'insideLeft', offset: 22 }} />
+          <XAxis type="number" dataKey="likelihood" name="Likelihood" domain={[0, 10.5]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fill: '#64748b', fontSize: 10 }} label={{ value: 'Likelihood →', fill: '#94a3b8', fontSize: 10, position: 'insideBottom', offset: -10 }} />
+          <YAxis type="number" dataKey="impact" name="Impact" domain={[0, 10.5]} ticks={[0, 2, 4, 6, 8, 10]} tick={{ fill: '#64748b', fontSize: 10 }} label={{ value: 'Impact →', fill: '#94a3b8', fontSize: 10, angle: -90, position: 'insideLeft', offset: 22 }} />
           <ZAxis range={[120, 120]} />
           <Tooltip
             cursor={{ strokeDasharray: '3 3', stroke: 'rgba(255,255,255,0.2)' }}
@@ -284,7 +284,7 @@ export function RiskScatter({ data, selected, onSelect, height = 250 }: { data: 
                   <div className="font-semibold text-white">{p.payload[0].payload.name}</div>
                   <div className="text-slate-300">{p.payload[0].payload.summary}</div>
                   <div className="mt-1 text-slate-400">
-                    Πιθανότητα {p.payload[0].payload.likelihood}/10 · Επίπτωση {p.payload[0].payload.impact}/10
+                    Likelihood {p.payload[0].payload.likelihood}/10 · Impact {p.payload[0].payload.impact}/10
                   </div>
                 </div>
               ) : null
@@ -332,9 +332,9 @@ export function RadarView({ devices, selectedId, onSelect, active, center }: { d
         ))}
         <line x1={R} y1={4} x2={R} y2={size - 4} stroke="rgba(56,189,248,0.1)" />
         <line x1={4} y1={R} x2={size - 4} y2={R} stroke="rgba(56,189,248,0.1)" />
-        <text x={R + 4} y={R - (R - 2) * 0.28 + 11} fill="rgba(148,163,184,0.7)" fontSize="9">~1μ</text>
-        <text x={R + 4} y={R - (R - 2) * 0.55 + 11} fill="rgba(148,163,184,0.7)" fontSize="9">~5μ</text>
-        <text x={R + 4} y={R - (R - 2) * 0.8 + 11} fill="rgba(148,163,184,0.7)" fontSize="9">~15μ</text>
+        <text x={R + 4} y={R - (R - 2) * 0.28 + 11} fill="rgba(148,163,184,0.7)" fontSize="9">~1m</text>
+        <text x={R + 4} y={R - (R - 2) * 0.55 + 11} fill="rgba(148,163,184,0.7)" fontSize="9">~5m</text>
+        <text x={R + 4} y={R - (R - 2) * 0.8 + 11} fill="rgba(148,163,184,0.7)" fontSize="9">~15m</text>
       </svg>
       {active && <div className="radar-sweep pointer-events-none absolute inset-[1%] rounded-full" />}
       {devices.map((d) => {
@@ -349,7 +349,7 @@ export function RadarView({ devices, selectedId, onSelect, active, center }: { d
             key={d.id}
             type="button"
             onClick={() => onSelect(d.id)}
-            aria-label={d.name || d.label || 'Συσκευή'}
+            aria-label={d.name || d.label || 'Device'}
             className="absolute z-10 -translate-x-1/2 -translate-y-1/2 p-2 transition-[left,top] duration-1000 ease-out"
             style={{ left: `${(x / size) * 100}%`, top: `${(y / size) * 100}%` }}
           >
@@ -373,7 +373,7 @@ export function RadarView({ devices, selectedId, onSelect, active, center }: { d
 
 export function ProximityMeter({ rssi }: { rssi: number }) {
   const p = clamp((rssi + 95) / 60, 0, 1);
-  const label = p > 0.8 ? 'Καυτό! Είναι δίπλα σας' : p > 0.6 ? 'Ζεστό — πολύ κοντά' : p > 0.4 ? 'Χλιαρό — πλησιάζετε' : p > 0.2 ? 'Κρύο — μακριά' : 'Παγωμένο — πολύ μακριά';
+  const label = p > 0.8 ? 'Hot! Right next to you' : p > 0.6 ? 'Warm — very close' : p > 0.4 ? 'Lukewarm — getting closer' : p > 0.2 ? 'Cool — far away' : 'Freezing — very far';
   const color = p > 0.8 ? '#fb7185' : p > 0.6 ? '#fb923c' : p > 0.4 ? '#fbbf24' : p > 0.2 ? '#38bdf8' : '#64748b';
   return (
     <div className="flex flex-col items-center py-2">
@@ -388,7 +388,7 @@ export function ProximityMeter({ rssi }: { rssi: number }) {
       <div className="mt-2 text-base font-semibold" style={{ color }}>
         {label}
       </div>
-      <div className="text-xs text-slate-400">Σήμα: {Math.round(rssi)} dBm</div>
+      <div className="text-xs text-slate-400">Signal: {Math.round(rssi)} dBm</div>
     </div>
   );
 }

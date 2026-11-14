@@ -146,7 +146,7 @@ function persistedDefaults(now: number) {
     radioOn: true,
     discoverable: false,
     discoverableUntil: null as number | null,
-    deviceName: 'Galaxy S23 του Γιώργου',
+    deviceName: "George's Galaxy S23",
     modules: { ...DEFAULT_MODULES },
     settings: { ...DEFAULT_SETTINGS },
     paired: initialPaired(now),
@@ -157,8 +157,8 @@ function persistedDefaults(now: number) {
     updatesCheckedAt: null as number | null,
     location: 'home' as LocationCtx,
     trustedPlaces: [
-      { id: 'tp-home', name: 'Σπίτι', kind: 'home', radius: 150 },
-      { id: 'tp-work', name: 'Εργασία', kind: 'work', radius: 200 },
+      { id: 'tp-home', name: 'Home', kind: 'home', radius: 150 },
+      { id: 'tp-work', name: 'Work', kind: 'work', radius: 200 },
     ] as TrustedPlace[],
     radarMode: 'on' as Mode,
     quizBest: null as number | null,
@@ -193,12 +193,12 @@ function resolveAttack(s: State, spec: AttackSpec, now: number): AttackOutcome {
 
   const out: AttackOutcome = { blockedPkts: 0 };
   let description = spec.description;
-  // Στο AUTO, τα αιτήματα που δεν είναι ξεκάθαρα κακόβουλα φτάνουν στον χρήστη για απόφαση
+  // In AUTO mode, ambiguous requests occasionally prompt the user for hands-on decision practice
   if (spec.request && eff === 'auto' && action === 'blocked' && chance(0.5)) action = 'warned';
   if (spec.request && action !== 'blocked') {
     if (s.settings.autoRejectUnknown) {
       action = 'blocked';
-      description += ' Απορρίφθηκε αυτόματα λόγω της ρύθμισης «Αυτόματη απόρριψη άγνωστων αιτημάτων».';
+      description += ' Automatically rejected by your "Auto-reject unknown requests" setting.';
     } else if (!s.pendingRequest) {
       out.request = {
         id: uid(),
@@ -245,7 +245,7 @@ function ingestLive(nearby: NearbyDevice[], adverts: LiveAdvert[], now: number):
       const c = classifyAdvert(a);
       const looksMac = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(a.id);
       map.set(a.id, {
-        id: a.id, name: a.name, type: c.type, mac: looksMac ? a.id.toUpperCase() : '— (κρυφή από τον browser)', macType: macTypeOf(a.id),
+        id: a.id, name: a.name, type: c.type, mac: looksMac ? a.id.toUpperCase() : '— (masked by browser)', macType: macTypeOf(a.id),
         protocol: 'ble', manufacturer: c.manufacturer, rssi: a.rssi, rssiBase: a.rssi, rssiHistory: [a.rssi], txPower: a.txPower,
         firstSeen: now, lastSeen: now, risk: c.risk, reason: c.reason, tags: c.tags, encrypted: null, source: 'live',
         services: c.services, angle: hashAngle(a.id), label: c.label,
@@ -292,7 +292,7 @@ export const useStore = create<State>()(
 
       setMaster: (m) => {
         set({ master: m });
-        const t = { on: 'Η κεντρική προστασία είναι ΕΝΕΡΓΗ', off: 'Η κεντρική προστασία ΑΠΕΝΕΡΓΟΠΟΙΗΘΗΚΕ', auto: 'Έξυπνη προστασία (AUTO) ενεργή' }[m];
+        const t = { on: 'Master protection is ACTIVE', off: 'Master protection DISABLED', auto: 'Smart protection (AUTO) active' }[m];
         get().toast(t, m === 'off' ? 'warning' : 'success');
       },
 
@@ -303,14 +303,14 @@ export const useStore = create<State>()(
           if (m === 'on' && !s.live.btEnabled) void nativeRequestEnable();
           if (m === 'off' && s.live.btEnabled) {
             void nativeOpenSettings();
-            get().toast('Το Android δεν επιτρέπει σε εφαρμογές να κλείνουν μόνες τους το Bluetooth. Κλείστε το από τις ρυθμίσεις που άνοιξαν.', 'info');
+            get().toast('Android 13+ prevents apps from disabling Bluetooth directly. Please toggle it off in the Settings screen that just opened.', 'info');
           }
           set({ radioMode: m, lastActivity: now, autoOffNotified: false });
           return;
         }
         set({ radioMode: m, radioOn: m !== 'off', lastActivity: now, autoOffNotified: false });
         get().toast(
-          m === 'off' ? 'Bluetooth OFF — μέγιστη ασφάλεια' : m === 'on' ? 'Bluetooth μόνιμα ON' : `Bluetooth AUTO — κλείνει μετά από ${s.settings.autoOffMinutes}′ αδράνειας`,
+          m === 'off' ? 'Bluetooth OFF — maximum safety' : m === 'on' ? 'Bluetooth always ON' : `Bluetooth AUTO — turns off after ${s.settings.autoOffMinutes}m idle`,
           m === 'on' ? 'info' : 'success',
         );
       },
@@ -322,7 +322,7 @@ export const useStore = create<State>()(
           return;
         }
         set({ radioOn: true, lastActivity: Date.now() });
-        get().toast('Το Bluetooth ενεργοποιήθηκε προσωρινά (AUTO)', 'info');
+        get().toast('Bluetooth temporarily enabled (AUTO)', 'info');
       },
 
       setModule: (id, m) => set((s) => ({ modules: { ...s.modules, [id]: m } })),
@@ -330,22 +330,22 @@ export const useStore = create<State>()(
       setAllModules: (m) => {
         const modules = m === 'recommended' ? { ...RECOMMENDED_MODULES } : (Object.fromEntries(Object.keys(DEFAULT_MODULES).map((k) => [k, m])) as Record<ModuleId, Mode>);
         set({ modules });
-        get().toast(m === 'recommended' ? 'Εφαρμόστηκαν οι προτεινόμενες ρυθμίσεις' : `Όλες οι μονάδες σε ${m.toUpperCase()}`, m === 'off' ? 'warning' : 'success');
+        get().toast(m === 'recommended' ? 'Applied recommended protection preset' : `All modules set to ${m.toUpperCase()}`, m === 'off' ? 'warning' : 'success');
       },
 
       setDiscoverable: (on) => {
         const s = get();
         if (on && !s.radioOn) {
-          get().toast('Ενεργοποιήστε πρώτα το Bluetooth', 'warning');
+          get().toast('Enable Bluetooth first', 'warning');
           return;
         }
         set({ discoverable: on, discoverableUntil: on ? Date.now() + s.settings.discoverableTimeout * 1000 : null });
-        if (on) get().toast(`Ορατό για ${s.settings.discoverableTimeout} δευτ. — μετά κλείνει αυτόματα`, 'info');
+        if (on) get().toast(`Discoverable for ${s.settings.discoverableTimeout}s — turns off automatically`, 'info');
       },
 
       setDeviceName: (n) => {
         set({ deviceName: n.trim() || get().deviceName });
-        get().toast('Το όνομα συσκευής ενημερώθηκε', 'success');
+        get().toast('Device name updated', 'success');
       },
 
       updateSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
@@ -360,12 +360,12 @@ export const useStore = create<State>()(
           set(patch);
           get().addEvent({
             moduleId: null, severity: 'info', action: 'info', simulated: true,
-            title: 'Το Bluetooth απενεργοποιήθηκε αυτόματα',
-            description: `Φύγατε από έμπιστη τοποθεσία (${LOCATION_LABEL[s.location]}). Η λειτουργία AUTO έκλεισε το Bluetooth για να σας προστατεύσει.`,
-            advice: 'Μπορείτε να το ενεργοποιήσετε προσωρινά από την Αρχική, όποτε το χρειαστείτε.',
+            title: 'Bluetooth turned off automatically',
+            description: `You left a trusted place (${LOCATION_LABEL[s.location]}). AUTO mode turned Bluetooth off to keep you safe.`,
+            advice: 'You can wake it temporarily anytime from the Home screen.',
           });
         } else set(patch);
-        get().toast(`Τοποθεσία: ${LOCATION_LABEL[l]}${reason ? ` (${reason})` : ''}`, l === 'public' ? 'warning' : 'info');
+        get().toast(`Location: ${LOCATION_LABEL[l]}${reason ? ` (${reason})` : ''}`, l === 'public' ? 'warning' : 'info');
       },
 
       addTrustedPlace: (p) => set((s) => ({ trustedPlaces: [...s.trustedPlaces.filter((x) => x.id !== p.id), p] })),
@@ -378,19 +378,19 @@ export const useStore = create<State>()(
         const now = Date.now();
         if (!d.connected && !s.radioOn) {
           if (s.radioMode === 'off' || s.live.btEnabled !== null) {
-            get().toast('Το Bluetooth είναι κλειστό. Ενεργοποιήστε το πρώτα.', 'warning');
+            get().toast('Bluetooth is off. Turn it on first.', 'warning');
             return;
           }
           set({ radioOn: true });
         }
         set({ paired: s.paired.map((p) => (p.id === id ? { ...p, connected: !p.connected, lastUsed: now } : p)), lastActivity: now });
-        get().toast(d.connected ? `Αποσυνδέθηκε: ${d.name}` : `Συνδέθηκε: ${d.name}`, 'info');
+        get().toast(d.connected ? `Disconnected: ${d.name}` : `Connected: ${d.name}`, 'info');
       },
 
       removePaired: (id) => {
         const d = get().paired.find((p) => p.id === id);
         set((s) => ({ paired: s.paired.filter((p) => p.id !== id) }));
-        if (d) get().toast(`Αφαιρέθηκε: ${d.name}`, 'success');
+        if (d) get().toast(`Removed: ${d.name}`, 'success');
       },
 
       removeStale: () => {
@@ -400,11 +400,11 @@ export const useStore = create<State>()(
         set({ paired: s.paired.filter((p) => daysSince(p.lastUsed) <= s.settings.staleDays) });
         get().addEvent({
           moduleId: 'bias', severity: 'info', action: 'info', simulated: true,
-          title: `Αφαιρέθηκαν ${stale.length} παλιές συσκευές`,
-          description: `Διαγράφηκαν: ${stale.map((p) => p.name).join(', ')}. Λιγότερες αποθηκευμένες «έμπιστες» συσκευές σημαίνει μικρότερο ρίσκο πλαστοπροσωπίας (BIAS).`,
-          advice: 'Επαναλάβετε τον έλεγχο κάθε λίγους μήνες.',
+          title: `Removed ${stale.length} stale device${stale.length === 1 ? '' : 's'}`,
+          description: `Deleted: ${stale.map((p) => p.name).join(', ')}. Fewer saved "trusted" identities reduces your BIAS impersonation risk.`,
+          advice: 'Repeat this cleanup every few months.',
         });
-        get().toast(`Αφαιρέθηκαν ${stale.length} παλιές συσκευές`, 'success');
+        get().toast(`Removed ${stale.length} stale device${stale.length === 1 ? '' : 's'}`, 'success');
         return stale.length;
       },
 
@@ -414,29 +414,29 @@ export const useStore = create<State>()(
         const s = get();
         const d = s.nearby.find((x) => x.id === nearbyId);
         if (!d) return false;
-        const name = d.name || d.label || 'Νέα συσκευή';
+        const name = d.name || d.label || 'New device';
         const now = Date.now();
         if (!s.radioOn) {
-          get().toast('Το Bluetooth είναι κλειστό', 'warning');
+          get().toast('Bluetooth is turned off', 'warning');
           return false;
         }
         const sniff = effectiveMode(s.master, s.modules.sniffing, s.location);
         if (s.location === 'public' && (s.settings.pairingOnlyTrusted || sniff !== 'off')) {
           get().addEvent({
             moduleId: 'sniffing', severity: 'medium', action: 'blocked', simulated: true, device: name,
-            title: 'Μπλοκαρίστηκε pairing σε δημόσιο χώρο',
-            description: `Η σύζευξη με «${name}» μπλοκαρίστηκε επειδή βρίσκεστε σε δημόσιο χώρο, όπου κάποιος μπορεί να υποκλέψει τα κλειδιά ασφαλείας (sniffing).`,
-            advice: 'Κάντε τη σύζευξη όταν βρίσκεστε σε έμπιστη τοποθεσία (π.χ. στο σπίτι σας).',
+            title: 'Blocked pairing in a public place',
+            description: `Pairing with "${name}" was blocked because you are in a public place where an attacker could sniff the exchanged encryption keys.`,
+            advice: 'Pair new accessories when you are in a trusted place (such as Home).',
           });
-          get().toast('Η σύζευξη μπλοκαρίστηκε: βρίσκεστε σε δημόσιο χώρο', 'warning');
+          get().toast('Pairing blocked: you are in a public place', 'warning');
           return false;
         }
         if (s.location === 'public')
           get().addEvent({
             moduleId: 'sniffing', severity: 'medium', action: 'allowed', simulated: true, device: name,
-            title: 'Pairing σε δημόσιο χώρο χωρίς προστασία',
-            description: `Έγινε σύζευξη με «${name}» σε δημόσιο χώρο. Τα κλειδιά ασφαλείας ανταλλάχθηκαν εκεί που μπορεί να υπάρχει sniffer.`,
-            advice: 'Την επόμενη φορά, κάντε pairing στο σπίτι. Ενεργοποιήστε τη ρύθμιση «Pairing μόνο σε έμπιστες τοποθεσίες».',
+            title: 'Unprotected pairing in a public place',
+            description: `Paired with "${name}" in a public venue. Encryption keys were exchanged where a nearby sniffer could capture them.`,
+            advice: 'Pair at home next time, and enable "Pair only in trusted places".',
           });
         const dev: PairedDevice = {
           id: uid(), name, type: d.type, mac: d.mac.startsWith('—') ? randomMac('public') : d.mac, pairedAt: now, lastUsed: now, connected: true,
@@ -446,17 +446,17 @@ export const useStore = create<State>()(
         set({ paired: [dev, ...s.paired], lastActivity: now });
         get().addEvent({
           moduleId: null, severity: 'info', action: 'info', simulated: true, device: name,
-          title: 'Νέα ασφαλής σύζευξη',
-          description: `Η συσκευή «${name}» συζεύχθηκε με LE Secure Connections και κλειδί 16 bytes.`,
-          advice: 'Ελέγξτε τα δικαιώματά της στην καρτέλα «Συσκευές».',
+          title: 'New secure pairing completed',
+          description: `"${name}" paired using LE Secure Connections with a 16-byte key.`,
+          advice: 'Review its data permissions in the "Devices" tab.',
         });
-        get().toast(`Σύζευξη με «${name}» ολοκληρώθηκε`, 'success');
+        get().toast(`Paired with "${name}"`, 'success');
         return true;
       },
 
       blockDevice: (mac, name) => {
         set((s) => ({ blocked: [{ mac, name, at: Date.now() }, ...s.blocked.filter((b) => b.mac !== mac)], trustedMacs: s.trustedMacs.filter((m) => m !== mac) }));
-        get().toast(`Αποκλείστηκε: ${name}`, 'success');
+        get().toast(`Blocked: ${name}`, 'success');
       },
       unblockDevice: (mac) => set((s) => ({ blocked: s.blocked.filter((b) => b.mac !== mac) })),
       trustDevice: (mac) => {
@@ -480,7 +480,7 @@ export const useStore = create<State>()(
         const rank = SEVERITY_RANK[e.severity];
         if (s.settings.vibration && rank >= 3 && e.action !== 'info') vibrate(e.action === 'allowed' ? [200, 80, 200, 80, 200] : [90, 50, 90]);
         if (s.settings.notifications && rank >= 3 && e.action !== 'info') {
-          const pre = e.action === 'blocked' ? '🛡️ Αποκλείστηκε: ' : '⚠️ ';
+          const pre = e.action === 'blocked' ? '🛡️ Blocked: ' : '⚠️ ';
           void showNotification(pre + e.title, e.description.slice(0, 140));
         }
       },
@@ -494,15 +494,15 @@ export const useStore = create<State>()(
         }));
         get().addEvent({
           moduleId: r.moduleId, severity: r.severity, title: r.title, device: r.deviceName, advice: r.advice,
-          description: r.description + (accept ? ' Ο χρήστης ΑΠΟΔΕΧΤΗΚΕ το αίτημα.' : timedOut ? ' Το αίτημα έληξε χωρίς απάντηση.' : ' Ο χρήστης απέρριψε το αίτημα.'),
+          description: r.description + (accept ? ' User ACCEPTED the request.' : timedOut ? ' Request timed out without an answer.' : ' User rejected the request.'),
           action: accept ? 'user-allowed' : 'user-blocked',
         });
         get().toast(
           accept
-            ? 'Αποδεχτήκατε αίτημα από άγνωστη συσκευή! Σε πραγματική επίθεση, θα είχε τώρα πρόσβαση στο κινητό σας.'
+            ? 'You accepted a request from an unknown device! In a real attack it would now have access to your phone.'
             : timedOut
-              ? 'Το αίτημα έληξε και απορρίφθηκε αυτόματα.'
-              : 'Σωστά! Απορρίψατε ένα ύποπτο αίτημα. 👏',
+              ? 'Request timed out and was automatically rejected.'
+              : 'Nice! You rejected a suspicious Bluetooth request. 👏',
           accept ? 'danger' : 'success',
         );
       },
@@ -521,18 +521,18 @@ export const useStore = create<State>()(
 
       markUpdatesChecked: () => {
         set({ updatesCheckedAt: Date.now() });
-        get().toast('Καταγράφηκε: ελέγξατε για ενημερώσεις λογισμικού', 'success');
+        get().toast('Recorded: you checked for software updates', 'success');
       },
       setQuizBest: (n) => set((s) => ({ quizBest: Math.max(n, s.quizBest ?? 0) })),
       markEventsRead: () => set({ readEventsAt: Date.now() }),
       clearEvents: () => {
         set({ events: [], stats: { blocked: 0, allowed: 0, warned: 0, correct: 0, wrong: 0, since: Date.now() } });
-        get().toast('Το αρχείο συμβάντων διαγράφηκε', 'info');
+        get().toast('Event log cleared', 'info');
       },
       resetAll: () => {
         const now = Date.now();
         set({ ...persistedDefaults(now), onboarded: true, nearby: [], timeline: [], pendingRequest: null, flood: null, screen: 'home', sheet: null });
-        get().toast('Έγινε επαναφορά όλων των ρυθμίσεων', 'info');
+        get().toast('All settings restored to defaults', 'info');
       },
 
       simulateAttack: (id) => {
@@ -541,11 +541,11 @@ export const useStore = create<State>()(
         if (!s.radioOn) {
           get().addEvent({
             moduleId: id, severity: 'info', action: 'info', simulated: true,
-            title: `Δοκιμή ${MODULE_MAP[id].attack}: αδύνατη`,
-            description: 'Το Bluetooth είναι κλειστό, οπότε καμία επίθεση Bluetooth δεν μπορεί να φτάσει στο κινητό σας. Αυτή είναι η πιο αποτελεσματική προστασία!',
-            advice: 'Κρατάτε το Bluetooth κλειστό (ή σε AUTO) όταν δεν το χρειάζεστε.',
+            title: `${MODULE_MAP[id].attack} test: impossible`,
+            description: 'Bluetooth is turned off, so no Bluetooth attack can reach your phone. This is the single most effective defense!',
+            advice: 'Keep Bluetooth off (or set to AUTO) whenever you do not need it.',
           });
-          get().toast('Bluetooth κλειστό → η επίθεση είναι αδύνατη 🛡️', 'success');
+          get().toast('Bluetooth is off → attack cannot reach you 🛡️', 'success');
           return;
         }
         const spec = generateAttack(id, { paired: s.paired, nearby: s.nearby, discoverable: s.discoverable, dosThreshold: s.settings.dosThreshold, location: s.location });
@@ -560,7 +560,7 @@ export const useStore = create<State>()(
           get().addEvent({ ...out.event, simulated: true });
           const a = out.event.action;
           get().toast(
-            a === 'blocked' ? `🛡️ Η δοκιμαστική επίθεση αποκλείστηκε` : a === 'allowed' ? '⚠️ Η επίθεση ΔΕΝ αποκλείστηκε — η μονάδα είναι OFF' : a === 'warned' ? 'Η επίθεση ανιχνεύθηκε (προειδοποίηση)' : 'Η σύνδεση κρίθηκε αποδεκτή',
+            a === 'blocked' ? '🛡️ Simulated attack was blocked' : a === 'allowed' ? '⚠️ Attack was NOT blocked — module is OFF' : a === 'warned' ? 'Attack detected (warning issued)' : 'Connection met security requirements',
             a === 'blocked' ? 'success' : a === 'allowed' ? 'danger' : 'warning',
           );
         }
@@ -573,10 +573,10 @@ export const useStore = create<State>()(
         try {
           if (s.caps.native) await nativeStartScan();
           else if (s.caps.leScan) await webStartScan();
-          else throw new Error('Η πραγματική σάρωση υποστηρίζεται στην εφαρμογή APK ή σε Chrome για Android με ενεργή την πειραματική σάρωση BLE.');
+          else throw new Error('Live BLE scanning requires the Android APK or Chrome on Android with experimental Web Platform features enabled.');
           drainLiveBuffer();
           set({ live: { ...get().live, scanning: true, error: null }, nearby: [] });
-          get().toast('Πραγματική σάρωση BLE σε εξέλιξη', 'success');
+          get().toast('Live BLE scanning started', 'success');
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           set({ live: { ...get().live, scanning: false, error: msg } });
@@ -620,9 +620,9 @@ export const useStore = create<State>()(
             autoOffNotified = true;
             events.push({
               moduleId: null, severity: 'medium', action: 'warned', simulated: false,
-              title: 'Προτείνεται κλείσιμο του Bluetooth',
-              description: `Το Bluetooth δεν χρησιμοποιείται εδώ και ${s.settings.autoOffMinutes} λεπτά. Το Android δεν επιτρέπει σε εφαρμογές να το κλείνουν αυτόματα.`,
-              advice: 'Κλείστε το από τις Γρήγορες ρυθμίσεις ή πατήστε OFF στην Αρχική για να ανοίξουν οι ρυθμίσεις Bluetooth.',
+              title: 'Recommended: turn Bluetooth off',
+              description: `Bluetooth has been idle for ${s.settings.autoOffMinutes} minutes. Android 13+ prevents apps from switching it off automatically.`,
+              advice: 'Turn it off from Quick Settings, or tap OFF on the Home screen to jump straight to Bluetooth settings.',
             });
           }
           if (anyConnected) autoOffNotified = false;
@@ -633,17 +633,17 @@ export const useStore = create<State>()(
             radioOn = false;
             events.push({
               moduleId: null, severity: 'info', action: 'info',
-              title: 'Νυχτερινή λειτουργία: Bluetooth OFF',
-              description: `Το Bluetooth απενεργοποιήθηκε αυτόματα (${s.settings.nightFrom}–${s.settings.nightTo}).`,
-              advice: 'Μπορείτε να αλλάξετε το ωράριο στις Ρυθμίσεις → Αυτοματισμοί.',
+              title: 'Night schedule: Bluetooth OFF',
+              description: `Bluetooth turned off automatically for your quiet hours (${s.settings.nightFrom}–${s.settings.nightTo}).`,
+              advice: 'You can adjust night hours in Settings → Automations.',
             });
           } else if (!anyConnected && now - lastActivity > s.settings.autoOffMinutes * 60000) {
             radioOn = false;
             events.push({
               moduleId: null, severity: 'info', action: 'info',
-              title: 'Αυτόματη απενεργοποίηση Bluetooth',
-              description: `Καμία συσκευή δεν ήταν συνδεδεμένη για ${s.settings.autoOffMinutes} λεπτά. Η λειτουργία AUTO έκλεισε το Bluetooth.`,
-              advice: 'Θα ανοίξει ξανά όταν συνδέσετε μια συσκευή ή πατήσετε «Ενεργοποίηση τώρα».',
+              title: 'Idle auto-shutoff: Bluetooth OFF',
+              description: `No device was connected for ${s.settings.autoOffMinutes} minutes. AUTO mode turned Bluetooth off.`,
+              advice: 'It will wake again whenever you connect a device or tap "Enable now".',
             });
           }
         }
@@ -655,20 +655,20 @@ export const useStore = create<State>()(
           if (pendingRequest) pendingRequest = null;
         }
 
-        // 2) Ορατότητα
+        // 2) Discoverable timeout
         if (discoverable && discoverableUntil && now > discoverableUntil) {
           discoverable = false;
           discoverableUntil = null;
           events.push({
             moduleId: null, severity: 'info', action: 'info',
-            title: 'Η ορατότητα απενεργοποιήθηκε αυτόματα',
-            description: 'Το κινητό σας δεν εμφανίζεται πλέον στις αναζητήσεις άλλων συσκευών.',
-            advice: 'Ενεργοποιήστε την ξανά μόνο όταν θέλετε να κάνετε pairing.',
+            title: 'Discoverable mode turned off automatically',
+            description: 'Your phone is hidden from nearby Bluetooth scans again.',
+            advice: 'Only enable discoverability briefly while pairing a new accessory.',
           });
         }
         if (radioOn && anyConnected && tickCount % 10 === 0) paired = paired.map((p) => (p.connected ? { ...p, lastUsed: now } : p));
 
-        // 3) Κοντινές συσκευές
+        // 3) Nearby devices
         const drained = drainLiveBuffer();
         if (s.live.scanning) nearby = ingestLive(nearby, drained, now);
         else if (!radioOn || !sim) nearby = nearby.length ? [] : nearby;
@@ -700,7 +700,7 @@ export const useStore = create<State>()(
           }
         }
 
-        // 4) Επιθέσεις (προσομοίωση)
+        // 4) Simulated attacks
         let blockedPkts = 0;
         let threats = 0;
         if (sim && radioOn && s.onboarded && now - s.lastEventAt > 7000) {
@@ -733,7 +733,7 @@ export const useStore = create<State>()(
           }
         }
 
-        // 5) Πραγματικοί trackers (live σάρωση)
+        // 5) Real trackers (live scan)
         if (s.live.scanning) {
           for (const d of nearby) {
             if (d.tags.includes('tracker') && now - d.firstSeen > 10 * 60000 && !alertedTrackers.has(d.id)) {
@@ -741,15 +741,15 @@ export const useStore = create<State>()(
               const eff = effectiveMode(s.master, s.modules.tracking, s.location);
               events.push({
                 moduleId: 'tracking', severity: 'high', action: eff === 'off' ? 'allowed' : 'warned', simulated: false, device: d.label || d.name || 'Tracker',
-                title: 'Tracker κοντά σας για πάνω από 10 λεπτά',
-                description: `Η συσκευή «${d.label || d.name}» εμφανίζεται συνεχώς κοντά σας εδώ και ${Math.round((now - d.firstSeen) / 60000)} λεπτά.`,
-                advice: 'Χρησιμοποιήστε τον «Εντοπισμό» στο Ραντάρ. Αν δεν είναι δικός σας ή κάποιου που είναι μαζί σας, ελέγξτε τα πράγματά σας.',
+                title: 'Tracker near you for over 10 minutes',
+                description: `"${d.label || d.name}" has been continuously detected near you for ${Math.round((now - d.firstSeen) / 60000)} minutes.`,
+                advice: 'Use "Locate" on the Radar screen. If it does not belong to you or someone traveling with you, check your belongings.',
               });
             }
           }
         }
 
-        // 6) Κίνηση πακέτων (live γράφημα)
+        // 6) Live packet timeline
         if (flood && now >= flood.until) flood = null;
         let packets = 0;
         let blocked = blockedPkts;
@@ -775,7 +775,7 @@ export const useStore = create<State>()(
         }
         const timeline = [...prevTimeline, { t: now, packets: Math.round(packets), blocked: Math.round(blocked), threats }].slice(-90);
 
-        // 7) Μπαταρία
+        // 7) Battery
         if (battery.source === 'sim') {
           let lvl = battery.level;
           let charging = battery.charging;
@@ -802,7 +802,7 @@ export const useStore = create<State>()(
       },
     }),
     {
-      name: 'blueshield-v1',
+      name: 'blueshield-en-v1',
       version: 1,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({

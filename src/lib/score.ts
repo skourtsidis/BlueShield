@@ -62,41 +62,41 @@ export function computeScore(s: ScoreInput, now = Date.now()): ScoreResult {
   const parts: ScorePart[] = [
     {
       key: 'protection',
-      label: 'Μονάδες προστασίας',
+      label: 'Protection modules',
       value: masterPts + modulePts,
       max: 50,
       items: [
-        { label: 'Κεντρική προστασία ενεργή (ON ή AUTO)', points: masterPts, max: 10 },
-        { label: `Κάλυψη μονάδων προστασίας: ${Math.round(coverage * 100)}%`, points: modulePts, max: 40 },
+        { label: 'Master protection active (ON or AUTO)', points: masterPts, max: 10 },
+        { label: `Protection module coverage: ${Math.round(coverage * 100)}%`, points: modulePts, max: 40 },
       ],
     },
     {
       key: 'hygiene',
-      label: 'Υγιεινή Bluetooth',
+      label: 'Bluetooth hygiene',
       value: radio + disc + name + staleScore,
       max: 30,
       items: [
-        { label: 'Bluetooth σε AUTO ή OFF (όχι μόνιμα ανοιχτό)', points: radio, max: 12 },
-        { label: 'Ορατότητα (discoverable) κλειστή', points: disc, max: 6 },
-        { label: 'Ουδέτερο όνομα συσκευής', points: name, max: 6 },
-        { label: stale ? `Παλιές αποθηκευμένες συσκευές: ${stale}` : 'Χωρίς παλιές αποθηκευμένες συσκευές', points: staleScore, max: 6 },
+        { label: 'Bluetooth set to AUTO or OFF (not always on)', points: radio, max: 12 },
+        { label: 'Discoverable mode turned off', points: disc, max: 6 },
+        { label: 'Neutral device name', points: name, max: 6 },
+        { label: stale ? `Stale paired devices: ${stale}` : 'No stale paired devices', points: staleScore, max: 6 },
       ],
     },
     {
       key: 'practices',
-      label: 'Καλές πρακτικές',
+      label: 'Best practices',
       value: updates + pairing + reject,
       max: 20,
       items: [
-        { label: 'Έλεγχος ενημερώσεων τις τελευταίες 30 ημέρες', points: updates, max: 8 },
-        { label: 'Pairing μόνο σε έμπιστες τοποθεσίες', points: pairing, max: 6 },
-        { label: 'Αυτόματη απόρριψη άγνωστων αιτημάτων', points: reject, max: 6 },
+        { label: 'OS updates checked within the last 30 days', points: updates, max: 8 },
+        { label: 'Pairing allowed only in trusted places', points: pairing, max: 6 },
+        { label: 'Auto-reject unknown requests enabled', points: reject, max: 6 },
       ],
     },
   ];
   const raw = parts.reduce((a, p) => a + p.value, 0);
   const total = Math.round(clamp(raw - penalty, 0, 100));
-  const level = total >= 85 ? 'Εξαιρετική' : total >= 70 ? 'Καλή' : total >= 50 ? 'Μέτρια' : 'Κίνδυνος';
+  const level = total >= 85 ? 'Excellent' : total >= 70 ? 'Good' : total >= 50 ? 'Moderate' : 'At risk';
   const tone = total >= 85 ? 'success' : total >= 70 ? 'info' : total >= 50 ? 'warning' : 'danger';
   const color = total >= 85 ? '#34d399' : total >= 70 ? '#38bdf8' : total >= 50 ? '#fbbf24' : '#fb7185';
   return { total, parts, penalty, level, tone, color, coverage, stale };

@@ -21,23 +21,23 @@ function ScoreHero() {
   const openSheet = useStore((s) => s.openSheet);
   const msg =
     score.total >= 85
-      ? 'Το κινητό σας είναι πολύ καλά προστατευμένο. Συνεχίστε έτσι!'
+      ? 'Your phone is strongly protected against Bluetooth threats. Keep it up!'
       : score.total >= 70
-        ? 'Καλή προστασία — λίγα βήματα ακόμη για το τέλειο.'
+        ? 'Solid protection — just a couple more steps for full hardening.'
         : score.total >= 50
-          ? 'Υπάρχουν κενά ασφαλείας. Πατήστε «Έλεγχος ασφαλείας» για να τα διορθώσετε με ένα πάτημα.'
-          : 'Το κινητό σας είναι εκτεθειμένο! Κάντε αμέσως έλεγχο ασφαλείας.';
+          ? 'Security gaps detected. Tap "Security Audit" to fix them in one tap.'
+          : 'Your phone is exposed! Run a Security Audit right away.';
   return (
     <Card className="relative overflow-hidden bg-gradient-to-br from-sky-500/[0.16] via-surface/80 to-indigo-500/[0.10] p-5">
       <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-sky-500/15 blur-3xl" />
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-slate-200">Βαθμολογία ασφαλείας</span>
+          <span className="text-sm font-semibold text-slate-200">Security Score</span>
           <InfoButton
             help={{
-              title: 'Βαθμολογία ασφαλείας',
-              body: 'Ένας αριθμός από 0 έως 100 που δείχνει με μια ματιά πόσο ασφαλές είναι το κινητό σας απέναντι στους κινδύνους του Bluetooth.\n\nΥπολογίζεται από: τις ενεργές μονάδες προστασίας (50 πόντοι), την «υγιεινή» του Bluetooth — π.χ. αν μένει ανοιχτό, αν είναι ορατό, το όνομα της συσκευής, οι παλιές συσκευές (30 πόντοι) — και τις καλές πρακτικές σας (20 πόντοι). Επιθέσεις που δεν αποκλείστηκαν αφαιρούν πόντους.',
-              tips: ['Πάνω από 85: εξαιρετικά.', 'Πατήστε «Ανάλυση» για να δείτε πού χάνετε πόντους.', 'Ο «Έλεγχος ασφαλείας» διορθώνει τα περισσότερα με ένα πάτημα.'],
+              title: 'Security Score',
+              body: 'A single 0–100 score showing at a glance how safe your phone is against Bluetooth security risks.\n\nIt combines: active protection modules (50 pts), Bluetooth hygiene — whether Bluetooth stays always on, discoverability, device name privacy, and stale paired devices (30 pts) — plus your security best practices (20 pts). Unblocked attacks deduct points.',
+              tips: ['85+ is excellent.', 'Tap "Breakdown" to see where points are lost.', '"Security Audit" fixes most issues in a single tap.'],
             }}
           />
         </div>
@@ -51,10 +51,10 @@ function ScoreHero() {
       </div>
       <div className="relative mt-4 grid grid-cols-2 gap-2">
         <Button icon={ScanSearch} onClick={() => openSheet('audit')}>
-          Έλεγχος ασφαλείας
+          Security Audit
         </Button>
         <Button variant="secondary" icon={ChartBar} onClick={() => openSheet('score')}>
-          Ανάλυση
+          Breakdown
         </Button>
       </div>
     </Card>
@@ -67,32 +67,32 @@ function MasterCard() {
   const location = useStore((s) => s.location);
   const openSheet = useStore((s) => s.openSheet);
   const desc = {
-    on: 'Όλες οι μονάδες προστασίας λειτουργούν όπως τις έχετε ρυθμίσει.',
+    on: 'All protection modules operate according to their individual settings.',
     auto:
       location === 'public'
-        ? 'Είστε σε δημόσιο χώρο: όλες οι μονάδες ανέβηκαν αυτόματα σε ON (μέγιστη προστασία).'
-        : `Είστε σε έμπιστη τοποθεσία (${LOCATION_LABEL[location]}): οι μονάδες λειτουργούν όπως τις ρυθμίσατε. Σε δημόσιο χώρο θα ανέβουν αυτόματα όλες σε ON.`,
-    off: 'ΠΡΟΣΟΧΗ: Καμία μονάδα δεν λειτουργεί. Το κινητό σας δεν προστατεύεται από επιθέσεις.',
+        ? 'You are in a public place: every protection module has automatically escalated to ON.'
+        : `You are in a trusted place (${LOCATION_LABEL[location]}): modules run normally, and will automatically escalate to ON whenever you enter a public place.`,
+    off: 'WARNING: All protection modules are disabled. Your phone is unshielded against attacks.',
   }[master];
   return (
     <Card>
       <SectionTitle
         icon={ShieldCheck}
-        title="Κεντρική προστασία"
-        subtitle="Ο γενικός διακόπτης όλων των μονάδων"
+        title="Master Protection"
+        subtitle="Global switch controlling all security shields"
         help={{
-          title: 'Κεντρική προστασία',
-          body: 'Είναι ο «γενικός διακόπτης» της εφαρμογής, που ελέγχει όλες τις μονάδες προστασίας μαζί.\n\n• ON: κάθε μονάδα λειτουργεί όπως την έχετε ρυθμίσει στην καρτέλα «Προστασία».\n• AUTO: έξυπνη λειτουργία — στο σπίτι/εργασία οι μονάδες λειτουργούν κανονικά, ενώ σε δημόσιους χώρους (καφετέρια, μετρό) ανεβαίνουν ΟΛΕΣ αυτόματα σε ON.\n• OFF: όλες οι μονάδες σταματούν. Δεν προτείνεται.',
-          tips: ['Για αρχάριους προτείνεται το AUTO.', 'Ορίστε σωστά την τοποθεσία σας για να δουλεύει σωστά το AUTO.'],
+          title: 'Master Protection',
+          body: 'Acts as the master switch for all 10 Bluetooth security shields.\n\n• ON: every module runs as configured on the "Shields" tab.\n• AUTO: smart context mode — at Home/Work modules run normally, while in public places (café, subway, airport) ALL modules automatically escalate to ON.\n• OFF: disables all shields. Not recommended.',
+          tips: ['AUTO is the recommended setting for beginners.', 'Set your current location accurately so AUTO can adapt.'],
         }}
       />
       <ModeSwitch value={master} onChange={setMaster} size="lg" />
       <p className={cn('mt-3 text-[13px] leading-relaxed', master === 'off' ? 'font-medium text-rose-300' : 'text-slate-300')}>{desc}</p>
       <button type="button" onClick={() => openSheet('location')} className="mt-3 flex w-full items-center gap-2 rounded-2xl bg-white/[0.04] px-3 py-2.5 text-left text-[13px] text-slate-200 transition hover:bg-white/[0.07]">
         <MapPin size={16} className="text-sky-300" />
-        Τοποθεσία: <b>{LOCATION_LABEL[location]}</b>
+        Location: <b>{LOCATION_LABEL[location]}</b>
         <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-semibold', location === 'public' ? 'bg-amber-500/15 text-amber-300' : 'bg-emerald-500/15 text-emerald-300')}>
-          {location === 'public' ? 'Μη έμπιστη' : 'Έμπιστη'}
+          {location === 'public' ? 'Untrusted' : 'Trusted'}
         </span>
         <ChevronRight size={16} className="ml-auto text-slate-500" />
       </button>
@@ -126,20 +126,20 @@ function BluetoothCard() {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
-            <h3 className="text-[15px] font-semibold text-white">Bluetooth</h3>
+            <h3 className="text-[15px] font-semibold text-white">Bluetooth Radio</h3>
             {native ? <LiveBadge /> : <SimBadge />}
             <InfoButton
               help={{
-                title: 'Διακόπτης Bluetooth (ON / OFF / AUTO)',
-                body: 'Ελέγχει το ίδιο το Bluetooth του κινητού.\n\n• ON: το Bluetooth μένει πάντα ανοιχτό.\n• OFF: μένει πάντα κλειστό — η πιο απλή και 100% αποτελεσματική άμυνα, γιατί καμία επίθεση Bluetooth δεν μπορεί να φτάσει στο κινητό.\n• AUTO: ανοίγει όταν το χρειάζεστε και κλείνει μόνο του όταν δεν υπάρχει συνδεδεμένη συσκευή για όσα λεπτά ορίσετε, τη νύχτα και όταν φεύγετε από έμπιστη τοποθεσία.',
-                more: 'Στο Android 13+ οι εφαρμογές δεν επιτρέπεται να κλείνουν μόνες τους το Bluetooth (BluetoothAdapter.disable() καταργήθηκε στο API 33). Στην έκδοση APK, η εφαρμογή διαβάζει την πραγματική κατάσταση, ζητά ενεργοποίηση με το επίσημο παράθυρο του συστήματος και, για απενεργοποίηση, σας ειδοποιεί και ανοίγει τις ρυθμίσεις Bluetooth.',
-                tips: ['iPhone: κλείστε το από τις Ρυθμίσεις — το Control Center απλώς αποσυνδέει τις συσκευές.', 'Το AUTO είναι η καλύτερη ισορροπία ασφάλειας και ευκολίας.'],
+                title: 'Bluetooth Radio (ON / OFF / AUTO)',
+                body: 'Controls your phone’s Bluetooth radio.\n\n• ON: Bluetooth stays permanently on.\n• OFF: stays completely off — the simplest, 100% effective defense, since no Bluetooth attack can reach a powered-off radio.\n• AUTO: turns on when you need it and shuts off automatically after idle minutes with no connected devices, overnight, and when leaving a trusted place.',
+                more: 'Starting in Android 13 (API 33), third-party apps are no longer allowed to disable Bluetooth silently (BluetoothAdapter.disable() was deprecated). In the Android APK, BlueShield reads real radio state, requests enabling via the official system dialog, and alerts you + opens Bluetooth Settings whenever shutoff is needed.',
+                tips: ['iPhone note: turn Bluetooth off inside Settings — Control Center only disconnects accessories.', 'AUTO gives the best balance between convenience and safety.'],
               }}
             />
           </div>
-          <div className={cn('text-xl font-bold', radioOn ? 'text-sky-300' : 'text-slate-400')}>{radioOn ? 'Ενεργό' : 'Ανενεργό'}</div>
+          <div className={cn('text-xl font-bold', radioOn ? 'text-sky-300' : 'text-slate-400')}>{radioOn ? 'Active' : 'Off'}</div>
           <div className="text-xs text-slate-400">
-            {radioOn ? `${connected.length} συνδεδεμέν${connected.length === 1 ? 'η συσκευή' : 'ες συσκευές'}` : 'Καμία επίθεση Bluetooth δεν είναι δυνατή 🛡️'}
+            {radioOn ? `${connected.length} connected device${connected.length === 1 ? '' : 's'}` : 'No Bluetooth attack is possible 🛡️'}
           </div>
         </div>
       </div>
@@ -149,7 +149,7 @@ function BluetoothCard() {
           <div className="flex items-center gap-2">
             <Timer size={15} className="shrink-0 text-violet-300" />
             <span>
-              Αυτόματο κλείσιμο σε <b className="tabular-nums text-white">{fmtCountdown(autoOffIn)}</b> — καμία συνδεδεμένη συσκευή.
+              Auto-shutoff in <b className="tabular-nums text-white">{fmtCountdown(autoOffIn)}</b> — no connected devices.
             </span>
           </div>
         )}
@@ -157,23 +157,23 @@ function BluetoothCard() {
           <div className="flex items-start gap-2">
             <Timer size={15} className="mt-0.5 shrink-0 text-violet-300" />
             <span>
-              Μένει ανοιχτό όσο είναι συνδεδεμένα: <b className="text-white">{connected.map((c) => c.name).join(', ')}</b>. Θα κλείσει {settings.autoOffMinutes}′ μετά την αποσύνδεση.
+              Staying on while connected to <b className="text-white">{connected.map((c) => c.name).join(', ')}</b>. Will turn off {settings.autoOffMinutes}m after disconnect.
             </span>
           </div>
         )}
         {radioMode === 'auto' && !radioOn && (
           <div className="flex items-center justify-between gap-2">
-            <span>Κλειστό αυτόματα για την ασφάλειά σας.</span>
+            <span>Automatically turned off to keep you safe.</span>
             <Button size="sm" onClick={wakeRadio}>
-              Ενεργοποίηση τώρα
+              Enable now
             </Button>
           </div>
         )}
-        {radioMode === 'on' && <div>Μόνιμα ανοιχτό. Προτείνεται το AUTO, ώστε να κλείνει όταν δεν το χρησιμοποιείτε.</div>}
-        {radioMode === 'off' && <div>Μόνιμα κλειστό — η πιο ασφαλής κατάσταση.</div>}
+        {radioMode === 'on' && <div>Permanently on. Switching to AUTO is recommended so Bluetooth turns off when idle.</div>}
+        {radioMode === 'off' && <div>Permanently off — the safest state possible.</div>}
         {settings.nightEnabled && radioMode === 'auto' && (
           <div className="flex items-center gap-2 text-slate-400">
-            <Moon size={14} /> Νυχτερινό κλείσιμο {settings.nightFrom}–{settings.nightTo}
+            <Moon size={14} /> Night shutoff {settings.nightFrom}–{settings.nightTo}
           </div>
         )}
       </div>
@@ -183,22 +183,22 @@ function BluetoothCard() {
         </span>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 text-sm font-medium text-slate-100">
-            Ορατό σε άλλες συσκευές
+            Discoverable to nearby devices
             <InfoButton
               help={{
-                title: 'Ορατότητα (Discoverable)',
-                body: 'Όταν είναι ενεργή, το κινητό σας εμφανίζεται στη λίστα «διαθέσιμων συσκευών» όλων γύρω σας — άρα και των επιτιθέμενων. Επιθέσεις όπως το Bluejacking απαιτούν η συσκευή να είναι ορατή.\n\nΧρειάζεται ΜΟΝΟ για λίγα δευτερόλεπτα, όταν συνδέετε για πρώτη φορά μια νέα συσκευή. Η εφαρμογή την κλείνει αυτόματα μετά από λίγο.',
-                tips: ['Κρατάτε την κλειστή.', 'Ο χρόνος αυτόματου κλεισίματος αλλάζει από τις Ρυθμίσεις.'],
+                title: 'Discoverable Visibility',
+                body: 'When enabled, your phone appears in the "Available devices" scan list of everyone nearby — including attackers. Attacks like classic Bluejacking rely on discoverability.\n\nYou only need it for a few seconds when pairing a brand-new accessory. BlueShield automatically turns it back off after a short timer.',
+                tips: ['Keep discoverable mode off.', 'You can change the auto-hide timer in Settings.'],
               }}
             />
           </div>
           <div className="text-xs text-slate-400">
-            {discoverable && discoverableUntil ? `Κλείνει αυτόματα σε ${fmtCountdown(discoverableUntil - now)}` : 'Κρυφό από αγνώστους — προτείνεται'}
+            {discoverable && discoverableUntil ? `Auto-hides in ${fmtCountdown(discoverableUntil - now)}` : 'Hidden from strangers — recommended'}
           </div>
         </div>
-        <Toggle checked={discoverable} onChange={setDiscoverable} label="Ορατότητα" />
+        <Toggle checked={discoverable} onChange={setDiscoverable} label="Discoverable" />
       </div>
-      <Hint className="mt-3">Το «OFF» είναι η πιο ασφαλής επιλογή: με κλειστό Bluetooth καμία επίθεση δεν είναι δυνατή. Το «AUTO» το κλείνει μόνο του όταν δεν το χρειάζεστε.</Hint>
+      <Hint className="mt-3">“OFF” is the safest choice: with Bluetooth powered down, zero Bluetooth attacks can reach you. “AUTO” turns it off automatically whenever idle.</Hint>
     </Card>
   );
 }
@@ -215,40 +215,40 @@ function TrafficCard() {
     <Card>
       <SectionTitle
         icon={Activity}
-        title="Κίνηση Bluetooth (live)"
-        subtitle="Πακέτα δεδομένων ανά δευτερόλεπτο — τελευταίο 1,5 λεπτό"
+        title="Live Bluetooth Traffic"
+        subtitle="Packets per second — last 90 seconds"
         action={native ? undefined : <SimBadge />}
         help={{
-          title: 'Γράφημα κίνησης Bluetooth',
-          body: 'Δείχνει, κάθε δευτερόλεπτο, πόσα «πακέτα» δεδομένων φτάνουν στο κινητό σας μέσω Bluetooth (μπλε) και πόσα μπλόκαρε η εφαρμογή (πράσινο).\n\nΗ κόκκινη διακεκομμένη γραμμή είναι το όριο της προστασίας DoS: αν η κίνηση το ξεπεράσει απότομα, πιθανότατα πρόκειται για επίθεση «βομβαρδισμού» (Bluesmack).\n\nΑγγίξτε το γράφημα για να δείτε τις τιμές κάθε στιγμής.',
-          more: 'Η κανονική κίνηση εξαρτάται από τις συνδεδεμένες συσκευές: ακουστικά (A2DP) ~30–45 πακέτα/δ., fitness trackers λίγα πακέτα/δ. Το Android δεν δίνει σε εφαρμογές πρόσβαση στα πακέτα του Bluetooth stack χωρίς root (μόνο μέσω HCI snoop log στις Επιλογές προγραμματιστή), γι’ αυτό η κίνηση εδώ είναι εκπαιδευτική προσομοίωση.',
+          title: 'Live Bluetooth Traffic Chart',
+          body: 'Displays, second by second, how many Bluetooth data packets arrive at your phone (blue) and how many suspicious packets were blocked (green).\n\nThe dashed red line marks your Anti-DoS rate limit: a sudden spike past that line indicates a packet-flood attack (such as Bluesmack).\n\nTouch or drag across the chart to inspect exact values.',
+          more: 'Typical traffic depends on connected peripherals: wireless audio (A2DP) ~30–45 pkt/s, fitness bands only a few pkt/s. Non-root Android apps cannot read raw HCI packets directly (only Developer Options HCI snoop log captures them), so packet rates here are modeled interactively.',
         }}
       />
       {flood && (
         <div className={cn('mb-2 flex items-center gap-2 rounded-xl px-3 py-2 text-xs', flood.blocked ? 'bg-emerald-500/15 text-emerald-200' : 'animate-pulse bg-rose-500/20 text-rose-100')}>
-          <Siren size={15} /> Πλημμύρα πακέτων από «{flood.source}» — {flood.blocked ? 'αποκλείεται ✓' : 'ΔΕΝ αποκλείεται!'}
+          <Siren size={15} /> Packet flood from “{flood.source}” — {flood.blocked ? 'being blocked ✓' : 'NOT blocked!'}
         </div>
       )}
       <TrafficChart data={timeline} threshold={threshold} />
       <div className="mt-3 grid grid-cols-3 gap-2 text-center">
         {[
-          { l: 'Τώρα', v: last?.packets ?? 0, c: 'text-sky-300' },
-          { l: 'Μέγιστο', v: peak, c: 'text-white' },
-          { l: 'Αποκλεισμένα', v: blocked, c: 'text-emerald-300' },
+          { l: 'Now', v: last?.packets ?? 0, c: 'text-sky-300' },
+          { l: 'Peak', v: peak, c: 'text-white' },
+          { l: 'Blocked', v: blocked, c: 'text-emerald-300' },
         ].map((x) => (
           <div key={x.l} className="rounded-2xl bg-white/[0.04] py-2">
-            <div className={cn('text-lg font-bold tabular-nums', x.c)}>{x.v.toLocaleString('el-GR')}</div>
+            <div className={cn('text-lg font-bold tabular-nums', x.c)}>{x.v.toLocaleString('en-US')}</div>
             <div className="text-[10.5px] text-slate-400">{x.l}</div>
           </div>
         ))}
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px] text-slate-400">
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />Εισερχόμενα</span>
-        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />Αποκλεισμένα</span>
-        <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 bg-rose-400" />Όριο DoS: {threshold}/δ</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-sky-400" />Incoming</span>
+        <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-emerald-400" />Blocked</span>
+        <span className="flex items-center gap-1.5"><span className="h-0.5 w-3 bg-rose-400" />DoS limit: {threshold}/s</span>
       </div>
       {threshold > Math.max(80, peak * 1.25) && (
-        <p className="mt-1.5 text-[11px] text-slate-500">Η κίνηση είναι πολύ κάτω από το όριο DoS ✓ — η κόκκινη γραμμή θα εμφανιστεί αν η κίνηση πλησιάσει το όριο.</p>
+        <p className="mt-1.5 text-[11px] text-slate-500">Traffic is well below your DoS threshold ✓ — the red limit line appears automatically if packet rates climb near it.</p>
       )}
     </Card>
   );
@@ -268,10 +268,10 @@ function QuickStats() {
   const active = MODULES.filter((m) => effectiveMode(master, modules[m.id], location) !== 'off').length;
   return (
     <div className="grid grid-cols-2 gap-3">
-      <StatTile icon={Radar} label="Κοντινές συσκευές" value={nearby.length} sub={suspicious ? `${suspicious} ύποπτες` : 'καμία ύποπτη'} tone={suspicious ? 'amber' : 'sky'} onClick={() => go('radar')} />
-      <StatTile icon={ShieldCheck} label="Απειλές αποκλείστηκαν σήμερα" value={blockedToday} tone="emerald" onClick={() => go('events')} />
-      <StatTile icon={Link2} label="Συνδεδεμένες συσκευές" value={paired.filter((p) => p.connected).length} sub={`από ${paired.length} αποθηκευμένες`} tone="violet" onClick={() => go('devices')} />
-      <StatTile icon={Layers} label="Ενεργές μονάδες" value={`${active}/${MODULES.length}`} sub={active < MODULES.length ? 'πατήστε για ρύθμιση' : 'πλήρης κάλυψη'} tone={active < MODULES.length ? 'rose' : 'emerald'} onClick={() => go('protection')} />
+      <StatTile icon={Radar} label="Nearby devices" value={nearby.length} sub={suspicious ? `${suspicious} suspicious` : 'none suspicious'} tone={suspicious ? 'amber' : 'sky'} onClick={() => go('radar')} />
+      <StatTile icon={ShieldCheck} label="Threats blocked today" value={blockedToday} tone="emerald" onClick={() => go('events')} />
+      <StatTile icon={Link2} label="Connected devices" value={paired.filter((p) => p.connected).length} sub={`of ${paired.length} saved`} tone="violet" onClick={() => go('devices')} />
+      <StatTile icon={Layers} label="Active shields" value={`${active}/${MODULES.length}`} sub={active < MODULES.length ? 'tap to configure' : 'full coverage'} tone={active < MODULES.length ? 'rose' : 'emerald'} onClick={() => go('protection')} />
     </div>
   );
 }
@@ -294,16 +294,16 @@ function ThreatsCard() {
     <Card>
       <SectionTitle
         icon={PieIcon}
-        title="Απειλές ανά κατηγορία"
-        subtitle="Όλα τα συμβάντα ασφαλείας που καταγράφηκαν"
-        help={{ title: 'Απειλές ανά κατηγορία', body: 'Το διάγραμμα δείχνει ποιοι τύποι επιθέσεων εμφανίστηκαν περισσότερο. Αγγίξτε ένα κομμάτι ή μια κατηγορία στη λίστα για να δείτε τι είναι και να μεταβείτε στην αντίστοιχη προστασία.' }}
+        title="Threats by Category"
+        subtitle="Breakdown of all recorded security events"
+        help={{ title: 'Threats by Category', body: 'Shows which Bluetooth attack types have appeared most often. Tap any slice or category row to read what it means and jump to its shield settings.' }}
       />
       {total === 0 ? (
         <div className="flex flex-col items-center gap-3 py-4 text-center">
           <ThreatDonut data={data} height={140} />
-          <p className="text-[13px] text-slate-400">Δεν έχουν καταγραφεί απειλές ακόμη. Θέλετε να δείτε πώς αντιδρά η προστασία;</p>
+          <p className="text-[13px] text-slate-400">No threats logged yet. Want to see how your shields respond?</p>
           <Button size="sm" variant="secondary" icon={FlaskConical} onClick={() => simulateAttack(pick(MODULES).id)}>
-            Δοκιμαστική επίθεση
+            Simulate an attack
           </Button>
         </div>
       ) : (
@@ -330,7 +330,7 @@ function ThreatsCard() {
           <div className="text-sm font-semibold text-white">{selMod.attack}</div>
           <p className="mt-1 text-[12.5px] leading-snug text-slate-400">{selMod.short}</p>
           <Button size="sm" variant="ghost" className="mt-1 -ml-2" onClick={() => go('protection')}>
-            Ρύθμιση προστασίας <ChevronRight size={14} />
+            Configure shield <ChevronRight size={14} />
           </Button>
         </div>
       )}
@@ -345,25 +345,25 @@ function BatteryCard() {
   const span = hist.length > 1 ? (hist[hist.length - 1].t - hist[0].t) / 3600000 : 0;
   const rate = span > 0.03 ? (hist[0].level - hist[hist.length - 1].level) / span : null;
   const status = battery.charging
-    ? { t: 'Φορτίζει', c: 'text-emerald-300' }
+    ? { t: 'Charging', c: 'text-emerald-300' }
     : rate === null
-      ? { t: 'Συλλογή δεδομένων…', c: 'text-slate-400' }
+      ? { t: 'Collecting samples…', c: 'text-slate-400' }
       : rate > 25
-        ? { t: 'Ασυνήθιστα γρήγορη αποφόρτιση!', c: 'text-rose-300' }
+        ? { t: 'Abnormally fast battery drain!', c: 'text-rose-300' }
         : rate > 12
-          ? { t: 'Αυξημένη κατανάλωση', c: 'text-amber-300' }
-          : { t: 'Φυσιολογική κατανάλωση', c: 'text-emerald-300' };
+          ? { t: 'Elevated power draw', c: 'text-amber-300' }
+          : { t: 'Normal discharge rate', c: 'text-emerald-300' };
   return (
     <Card>
       <SectionTitle
         icon={battery.charging ? BatteryCharging : BatteryMedium}
-        title="Μπαταρία & κατανάλωση"
-        subtitle="Ανίχνευση επιθέσεων που αδειάζουν την μπαταρία"
+        title="Battery & Drain Monitor"
+        subtitle="Spots battery-draining Bluetooth DoS floods"
         action={battery.source === 'live' ? <LiveBadge /> : <SimBadge />}
         help={{
-          title: 'Παρακολούθηση μπαταρίας',
-          body: 'Οι επιθέσεις άρνησης υπηρεσίας (π.χ. Bluesmack) βομβαρδίζουν το κινητό με πακέτα και αδειάζουν απότομα την μπαταρία. Η εφαρμογή μετρά πόσο γρήγορα πέφτει η μπαταρία (% ανά ώρα) και σας προειδοποιεί αν ο ρυθμός γίνει ασυνήθιστος.',
-          more: 'Στην έκδοση για browser/APK χρησιμοποιείται το Battery Status API (navigator.getBattery). Η μπαταρία αλλάζει σε βήματα του 1%, οπότε ο ρυθμός γίνεται ακριβής μετά από μερικά λεπτά.',
+          title: 'Battery Drain Monitoring',
+          body: 'Denial-of-Service attacks such as Bluesmack flood your Bluetooth chip with oversized packets and rapidly drain your battery. BlueShield tracks your discharge slope (% per hour) and alerts you if drain spikes abnormally.',
+          more: 'Uses the Web/WebView Battery Status API (navigator.getBattery) where available. Because OS battery levels update in 1% steps, slope accuracy improves after several minutes.',
         }}
       />
       <div className="flex items-end justify-between">
@@ -377,15 +377,15 @@ function BatteryCard() {
         <div className="text-right text-[12px] text-slate-400">
           {rate !== null && !battery.charging && (
             <>
-              <div className="text-base font-bold tabular-nums text-slate-200">{rate.toFixed(1)}%/ώρα</div>
-              ρυθμός αποφόρτισης
+              <div className="text-base font-bold tabular-nums text-slate-200">{rate.toFixed(1)}%/hr</div>
+              discharge rate
             </>
           )}
-          {flood && !flood.blocked && <div className="mt-1 font-semibold text-rose-300">⚠ Επίθεση DoS σε εξέλιξη</div>}
+          {flood && !flood.blocked && <div className="mt-1 font-semibold text-rose-300">⚠ Unblocked DoS flood active</div>}
         </div>
       </div>
       <div className="mt-2">
-        <MiniArea data={hist.map((h) => ({ x: h.t, v: h.level }))} color={rate && rate > 25 ? '#fb7185' : '#34d399'} unit="%" name="Μπαταρία" height={70} xFormat={(x) => fmtClock(x)} />
+        <MiniArea data={hist.map((h) => ({ x: h.t, v: h.level }))} color={rate && rate > 25 ? '#fb7185' : '#34d399'} unit="%" name="Battery" height={70} xFormat={(x) => fmtClock(x)} />
       </div>
     </Card>
   );
@@ -400,15 +400,15 @@ function RecentEvents() {
     <Card>
       <SectionTitle
         icon={ListChecks}
-        title="Πρόσφατα συμβάντα"
+        title="Recent Events"
         action={
           <Button size="sm" variant="ghost" onClick={() => go('events')}>
-            Όλα <ChevronRight size={14} />
+            View all <ChevronRight size={14} />
           </Button>
         }
       />
       {list.length === 0 ? (
-        <p className="py-3 text-center text-[13px] text-slate-400">Όλα ήσυχα — κανένα συμβάν ακόμη. 🛡️</p>
+        <p className="py-3 text-center text-[13px] text-slate-400">All quiet — no events recorded yet. 🛡️</p>
       ) : (
         <div className="divide-y divide-white/[0.06]">
           {list.map((e) => (
@@ -430,10 +430,10 @@ function TipCard() {
           <Lightbulb size={20} />
         </span>
         <div className="flex-1">
-          <div className="text-[11px] font-bold uppercase tracking-wider text-amber-300">Συμβουλή ασφαλείας</div>
+          <div className="text-[11px] font-bold uppercase tracking-wider text-amber-300">Security Tip</div>
           <p className="mt-1 text-[13.5px] leading-relaxed text-slate-200">{TIPS[i]}</p>
         </div>
-        <button type="button" onClick={() => setI((x) => (x + 1) % TIPS.length)} aria-label="Επόμενη συμβουλή" className="rounded-full bg-white/5 p-2 text-slate-300 hover:bg-white/10">
+        <button type="button" onClick={() => setI((x) => (x + 1) % TIPS.length)} aria-label="Next tip" className="rounded-full bg-white/5 p-2 text-slate-300 hover:bg-white/10">
           <RefreshCw size={15} />
         </button>
       </div>

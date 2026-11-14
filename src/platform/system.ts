@@ -43,18 +43,18 @@ function detectBrowser(ua: string) {
     const m = ua.match(re);
     if (m) return `${name} ${m[1]}`;
   }
-  return 'Άγνωστος browser';
+  return 'Unknown browser';
 }
 
 export async function getSystemInfo(): Promise<SystemInfo> {
   const n = nav();
   const ua: string = n.userAgent || '';
   let os: SystemInfo['os'] = 'other';
-  let osName = 'Άγνωστο';
+  let osName = 'Unknown';
   let version: string | null = null;
   let model: string | null = null;
   let live = false;
-  const browser = Capacitor.isNativePlatform() ? 'Εφαρμογή Android (WebView)' : detectBrowser(ua);
+  const browser = Capacitor.isNativePlatform() ? 'Android App (WebView)' : detectBrowser(ua);
 
   try {
     if (n.userAgentData?.getHighEntropyValues) {
@@ -85,7 +85,7 @@ export async function getSystemInfo(): Promise<SystemInfo> {
       version = a[1];
       const mm = ua.match(/Android [\d.]+; ([^;)]+)/);
       model = mm?.[1]?.trim() || null;
-      // Chrome "UA reduction": "Android 10; K" δεν είναι η πραγματική έκδοση
+      // Chrome UA reduction: "Android 10; K" is not the real OS version
       if (version === '10' && model === 'K') {
         version = null;
         model = null;
@@ -99,38 +99,38 @@ export async function getSystemInfo(): Promise<SystemInfo> {
       live = true;
     } else {
       os = 'desktop';
-      osName = /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Υπολογιστής';
+      osName = /Windows/.test(ua) ? 'Windows' : /Mac OS X/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'Desktop';
       live = true;
     }
   }
 
   const major = version ? parseInt(version, 10) || null : null;
   let support: SystemInfo['support'] = 'unknown';
-  let supportText = 'Δεν ήταν δυνατό να προσδιοριστεί η έκδοση του λειτουργικού. Ελέγξτε χειροκίνητα για ενημερώσεις.';
+  let supportText = 'Could not determine exact OS version. Please check for software updates manually.';
   if (os === 'android' && major) {
     if (major >= 13) {
       support = 'ok';
-      supportText = `Το Android ${major} λαμβάνει ακόμη ενημερώσεις ασφαλείας (εφόσον τις διανέμει ο κατασκευαστής σας).`;
+      supportText = `Android ${major} still receives security updates (provided your device manufacturer delivers them).`;
     } else if (major === 12) {
       support = 'warn';
-      supportText = 'Το Android 12 έχει φτάσει στο τέλος της υποστήριξης. Ελέγξτε αν ο κατασκευαστής στέλνει ακόμη ενημερώσεις.';
+      supportText = 'Android 12 has reached end-of-support. Check whether your manufacturer still ships security patches.';
     } else {
       support = 'fail';
-      supportText = `Το Android ${major} δεν λαμβάνει πλέον ενημερώσεις ασφαλείας. Κρατάτε το Bluetooth κλειστό όσο γίνεται.`;
+      supportText = `Android ${major} no longer receives security updates. Keep Bluetooth turned off whenever possible.`;
     }
   } else if (os === 'ios' && major) {
     if (major >= 18) {
       support = 'ok';
-      supportText = `Το iOS ${major} λαμβάνει ενημερώσεις ασφαλείας.`;
+      supportText = `iOS ${major} receives active security updates.`;
     } else if (major >= 16) {
       support = 'warn';
-      supportText = `Το iOS ${major} λαμβάνει περιορισμένες ενημερώσεις. Αναβαθμίστε αν γίνεται.`;
+      supportText = `iOS ${major} receives limited updates. Upgrade if your device supports it.`;
     } else {
       support = 'fail';
-      supportText = `Το iOS ${major} δεν λαμβάνει πλέον ενημερώσεις ασφαλείας.`;
+      supportText = `iOS ${major} no longer receives security updates.`;
     }
   } else if (os === 'desktop') {
-    supportText = 'Η εφαρμογή απευθύνεται σε κινητά Android. Σε υπολογιστή, τα δεδομένα συσκευών και επιθέσεων είναι προσομοίωση.';
+    supportText = 'BlueShield is designed for Android phones. On desktop, nearby devices and attacks run in simulation mode.';
   }
 
   return { os, osName, version, major, model, browser, support, supportText, live };
@@ -194,10 +194,10 @@ export async function startBattery(cb: (level: number, charging: boolean) => voi
 
 export function getPosition(): Promise<{ lat: number; lon: number; accuracy: number }> {
   return new Promise((resolve, reject) => {
-    if (!nav().geolocation) return reject(new Error('Η γεωθεσία δεν υποστηρίζεται σε αυτή τη συσκευή.'));
+    if (!nav().geolocation) return reject(new Error('Geolocation is not supported on this device.'));
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lon: p.coords.longitude, accuracy: p.coords.accuracy }),
-      (e) => reject(new Error(e.code === 1 ? 'Δεν δόθηκε άδεια τοποθεσίας.' : 'Δεν ήταν δυνατός ο εντοπισμός θέσης.')),
+      (e) => reject(new Error(e.code === 1 ? 'Location permission was denied.' : 'Could not determine your location.')),
       { enableHighAccuracy: true, timeout: 15000, maximumAge: 60000 },
     );
   });

@@ -5,7 +5,7 @@ import { analyzeName } from '../lib/utils';
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-/** Κανονικοποιημένη διαφήμιση BLE (από native plugin ή Web Bluetooth). */
+/** Normalized BLE advertisement (from native Capacitor plugin or Web Bluetooth). */
 export interface LiveAdvert {
   id: string;
   name: string | null;
@@ -61,7 +61,7 @@ const SERVICE_NAMES: Record<string, string> = {
   '180a': 'Device Information',
   '180f': 'Battery Service',
   '180d': 'Heart Rate',
-  '1812': 'HID (πληκτρολόγιο/ποντίκι)',
+  '1812': 'HID (keyboard/mouse)',
   '181a': 'Environmental Sensing',
   '1805': 'Current Time',
   fe2c: 'Google Fast Pair',
@@ -75,13 +75,13 @@ const SERVICE_NAMES: Record<string, string> = {
 };
 export const serviceName = (u: string) => SERVICE_NAMES[normUuid(u)] || normUuid(u).toUpperCase();
 
-/** Αναγνώριση τύπου συσκευής/trackers από τα δεδομένα διαφήμισης (πραγματικά πρότυπα). */
+/** Classifies a BLE advertisement (including real-world tracker/beacon frames). */
 export function classifyAdvert(a: LiveAdvert): Classification {
   const services = Array.from(new Set([...Object.keys(a.svc), ...a.uuids])).map(serviceName);
   const companyIds = Object.keys(a.mfr).map(Number);
   const manufacturer = companyIds.length
-    ? COMPANY[companyIds[0]] || `Κατασκευαστής 0x${companyIds[0].toString(16).padStart(4, '0').toUpperCase()}`
-    : 'Άγνωστος';
+    ? COMPANY[companyIds[0]] || `Vendor 0x${companyIds[0].toString(16).padStart(4, '0').toUpperCase()}`
+    : 'Unknown';
   const name = a.name || '';
   const res = (type: DeviceType, label: string, risk: RiskLevel, reason: string, tags: DeviceTag[] = []): Classification => ({
     type,
@@ -97,30 +97,30 @@ export function classifyAdvert(a: LiveAdvert): Classification {
   if (apple && apple.length > 0) {
     const t = apple[0];
     if (t === 0x12)
-      return res('tracker', 'Apple Find My (π.χ. AirTag)', 'medium', 'Αξεσουάρ Find My μακριά από τον κάτοχό του (π.χ. AirTag). Αν εμφανίζεται συνεχώς κοντά σας, μπορεί να σας παρακολουθεί.', ['tracker']);
+      return res('tracker', 'Apple Find My (e.g. AirTag)', 'medium', 'Separated Find My accessory (e.g. AirTag). If it keeps appearing near you over time, it may be tracking you.', ['tracker']);
     if (t === 0x02 && apple[1] === 0x15)
-      return res('beacon', 'iBeacon', 'low', 'Beacon εντοπισμού θέσης (iBeacon). Εφαρμογές καταστημάτων μπορούν να καταγράφουν την παρουσία σας.', ['beacon']);
-    if (t === 0x07) return res('headphones', 'AirPods / Beats', 'safe', 'Ακουστικά Apple σε λειτουργία σύζευξης/εγγύτητας.');
-    if (t === 0x10) return res('phone', 'Συσκευή Apple', 'safe', 'iPhone/iPad/Mac με τυχαία διεύθυνση — φυσιολογικό.');
+      return res('beacon', 'iBeacon', 'low', 'Indoor positioning beacon (iBeacon). Retail apps can log your presence here.', ['beacon']);
+    if (t === 0x07) return res('headphones', 'AirPods / Beats', 'safe', 'Apple audio accessory in proximity/pairing broadcast.');
+    if (t === 0x10) return res('phone', 'Apple device', 'safe', 'iPhone/iPad/Mac using a randomized address — normal behavior.');
   }
   const svcKeys = new Set([...Object.keys(a.svc), ...a.uuids]);
-  if (svcKeys.has('fd5a')) return res('tracker', 'Samsung SmartTag', 'medium', 'Tracker Samsung SmartTag. Παρακολουθήστε αν σας ακολουθεί.', ['tracker']);
-  if (svcKeys.has('feed') || svcKeys.has('feec')) return res('tracker', 'Tile tracker', 'medium', 'Tracker Tile. Παρακολουθήστε αν σας ακολουθεί σε διαφορετικά μέρη.', ['tracker']);
+  if (svcKeys.has('fd5a')) return res('tracker', 'Samsung SmartTag', 'medium', 'Samsung SmartTag tracker. Watch whether it follows you across locations.', ['tracker']);
+  if (svcKeys.has('feed') || svcKeys.has('feec')) return res('tracker', 'Tile tracker', 'medium', 'Tile tracker. Watch whether it follows you across locations.', ['tracker']);
   if (svcKeys.has('feaa')) {
     const frame = a.svc['feaa']?.[0];
     if (frame === 0x40 || frame === 0x41)
-      return res('tracker', 'Google Find My Device tracker', 'medium', 'Tracker του δικτύου Find My Device της Google.', ['tracker']);
-    return res('beacon', 'Eddystone beacon', 'low', 'Beacon Eddystone για εντοπισμό θέσης σε εσωτερικούς χώρους.', ['beacon']);
+      return res('tracker', 'Google Find My Device tracker', 'medium', 'Tracker on Google’s Find My Device network.', ['tracker']);
+    return res('beacon', 'Eddystone beacon', 'low', 'Eddystone indoor location beacon.', ['beacon']);
   }
   if (/flipper/i.test(name))
-    return res('tool', 'Flipper Zero', 'high', 'Εργαλείο hacking (Flipper Zero). Μπορεί να στέλνει μαζικά ψεύτικα αιτήματα σύνδεσης (BLE spam).', ['hacktool', 'suspicious']);
+    return res('tool', 'Flipper Zero', 'high', 'Wireless hacking multi-tool (Flipper Zero). Can broadcast BLE connection-popup spam floods.', ['hacktool', 'suspicious']);
   if (/^HC-0[56]/i.test(name) || a.mfr[0x02e5] || /esp32|esp_/i.test(name))
-    return res('tool', 'Πλακέτα ανάπτυξης', 'medium', 'Γενικό module/πλακέτα (ESP32/HC-05). Συχνό σε πειράματα — αλλά και σε εργαλεία επιθέσεων.', ['suspicious']);
-  if (/(free|gift|prize|win|promo|δώρο|κέρδ|δωρεάν)/i.test(name))
-    return res('unknown', 'Ύποπτο όνομα', 'high', 'Το «δελεαστικό» όνομα είναι τυπικό για bluejacking/phishing.', ['suspicious']);
-  if (svcKeys.has('180d')) return res('fitness', 'Αισθητήρας παλμών', 'low', 'Συσκευή fitness που εκπέμπει υπηρεσία καρδιακών παλμών — συχνά χωρίς κρυπτογράφηση.');
-  if (svcKeys.has('1812')) return res('keyboard', 'Συσκευή HID', 'low', 'Πληκτρολόγιο/ποντίκι (HID). Βεβαιωθείτε ότι είναι δικό σας.');
-  if (svcKeys.has('fe2c')) return res('headphones', 'Google Fast Pair', 'safe', 'Αξεσουάρ που υποστηρίζει Google Fast Pair.');
+    return res('tool', 'Development board', 'medium', 'Generic microcontroller/Bluetooth module (ESP32/HC-05). Common in DIY projects — and custom attack tools.', ['suspicious']);
+  if (/(free|gift|prize|win|promo|bonus|winner)/i.test(name))
+    return res('unknown', 'Suspicious lure name', 'high', 'Bait-style broadcast name typical of Bluejacking / phishing lures.', ['suspicious']);
+  if (svcKeys.has('180d')) return res('fitness', 'Heart-rate sensor', 'low', 'Fitness peripheral advertising Heart Rate Service — often unencrypted.');
+  if (svcKeys.has('1812')) return res('keyboard', 'HID input device', 'low', 'Wireless keyboard/mouse (HID). Make sure it belongs to you.');
+  if (svcKeys.has('fe2c')) return res('headphones', 'Google Fast Pair', 'safe', 'Accessory supporting Google Fast Pair.');
 
   const lower = name.toLowerCase();
   let type: DeviceType = 'unknown';
@@ -133,17 +133,17 @@ export function classifyAdvert(a: LiveAdvert): Classification {
   else if (/(macbook|laptop|desktop|pc|thinkpad)/.test(lower)) type = 'laptop';
   else if (/(iphone|galaxy|pixel|redmi|xiaomi|oneplus|phone|android)/.test(lower)) type = 'phone';
 
-  if (!name) return res(type, 'Ανώνυμη συσκευή BLE', 'safe', 'Ανώνυμη συσκευή με τυχαία διεύθυνση — πιθανότατα κινητό. Φυσιολογικό.');
+  if (!name) return res(type, 'Anonymous BLE device', 'safe', 'Unnamed BLE device with a randomized address — most likely a nearby phone. Normal.');
   const leak = analyzeName(name).level !== 'safe';
   return res(
     type,
     name,
     leak ? 'low' : 'safe',
-    leak ? 'Το όνομα που εκπέμπει αποκαλύπτει προσωπικά στοιχεία ή μοντέλο.' : 'Συνηθισμένη συσκευή χωρίς ενδείξεις κινδύνου.',
+    leak ? 'Broadcast name reveals personal details or exact device model.' : 'Ordinary Bluetooth device with no risk indicators.',
   );
 }
 
-/* ----------------------------- Buffer σάρωσης ----------------------------- */
+/* ----------------------------- Scan buffer ----------------------------- */
 const buffer = new Map<string, LiveAdvert>();
 export function drainLiveBuffer(): LiveAdvert[] {
   const arr = Array.from(buffer.values());
@@ -222,7 +222,7 @@ export async function nativeOpenSettings() {
 export async function nativeBonded(): Promise<{ id: string; name: string }[]> {
   try {
     const list = await BleClient.getBondedDevices();
-    return list.map((d) => ({ id: d.deviceId, name: d.name || 'Χωρίς όνομα' }));
+    return list.map((d) => ({ id: d.deviceId, name: d.name || 'Unnamed device' }));
   } catch {
     return [];
   }
@@ -234,7 +234,7 @@ let webHandler: ((ev: any) => void) | null = null;
 
 export async function webStartScan() {
   const bt = (navigator as any).bluetooth;
-  if (!bt?.requestLEScan) throw new Error('Η σάρωση BLE δεν υποστηρίζεται. Ενεργοποιήστε το chrome://flags/#enable-experimental-web-platform-features');
+  if (!bt?.requestLEScan) throw new Error('BLE scanning is not supported here. Enable chrome://flags/#enable-experimental-web-platform-features');
   webHandler = (ev: any) => {
     const mfr: Record<number, Uint8Array> = {};
     ev.manufacturerData?.forEach((dv: DataView, key: number) => (mfr[key] = dvToU8(dv)));
@@ -281,21 +281,21 @@ export interface InspectResult {
   error?: string;
 }
 
-/** Πραγματικός έλεγχος διαρροής πληροφοριών μιας συσκευής BLE (Web Bluetooth). */
+/** Real BLE GATT information-leak inspection via Web Bluetooth. */
 export async function inspectWebDevice(): Promise<InspectResult> {
   const bt = (navigator as any).bluetooth;
-  if (!bt?.requestDevice) throw new Error('Το Web Bluetooth δεν υποστηρίζεται σε αυτόν τον browser.');
+  if (!bt?.requestDevice) throw new Error('Web Bluetooth is not supported in this browser.');
   const device = await bt.requestDevice({
     acceptAllDevices: true,
     optionalServices: ['battery_service', 'device_information', 'heart_rate', 'generic_access', 'environmental_sensing', 'current_time'],
   });
-  const res: InspectResult = { name: device.name || 'Χωρίς όνομα', id: device.id, items: [], services: [] };
+  const res: InspectResult = { name: device.name || 'Unnamed device', id: device.id, items: [], services: [] };
   const nameLeak = device.name ? analyzeName(device.name) : null;
   res.items.push({
-    label: 'Όνομα που εκπέμπει',
-    value: device.name || '— (δεν εκπέμπει όνομα)',
+    label: 'Broadcast name',
+    value: device.name || '— (no name advertised)',
     status: nameLeak && nameLeak.level !== 'safe' ? 'leak' : 'info',
-    note: nameLeak && nameLeak.level !== 'safe' ? nameLeak.issues[0] : 'Το όνομα δεν αποκαλύπτει ευαίσθητα στοιχεία.',
+    note: nameLeak && nameLeak.level !== 'safe' ? nameLeak.issues[0] : 'Broadcast name does not expose sensitive personal info.',
   });
 
   const isProtected = (e: any) => /security|auth|encrypt|insufficient|notallowed|not permitted|gatt operation failed/i.test(String(e?.name) + ' ' + String(e?.message));
@@ -309,7 +309,7 @@ export async function inspectWebDevice(): Promise<InspectResult> {
       try {
         service = await server.getPrimaryService(svc);
       } catch {
-        res.items.push({ label, value: '—', status: 'absent', note: 'Η συσκευή δεν διαθέτει αυτή την υπηρεσία.' });
+        res.items.push({ label, value: '—', status: 'absent', note: 'Device does not expose this service.' });
         return;
       }
       try {
@@ -319,28 +319,28 @@ export async function inspectWebDevice(): Promise<InspectResult> {
       } catch (e) {
         res.items.push({
           label,
-          value: isProtected(e) ? 'Κλειδωμένο' : '—',
+          value: isProtected(e) ? 'Locked' : '—',
           status: isProtected(e) ? 'protected' : 'absent',
-          note: isProtected(e) ? 'Απαιτεί κρυπτογράφηση/σύζευξη για ανάγνωση — σωστή πρακτική ✓' : 'Μη διαθέσιμο χαρακτηριστικό.',
+          note: isProtected(e) ? 'Requires encryption/pairing to read — good security practice ✓' : 'Characteristic unavailable.',
         });
       }
     };
     const text = (dv: DataView) => new TextDecoder().decode(dv).replace(/\0/g, '').trim() || '—';
 
-    await tryRead('battery_service', 'battery_level', 'Επίπεδο μπαταρίας', (dv) => `${dv.getUint8(0)}%`,
-      'Διαβάζεται χωρίς σύζευξη — μπορεί να χρησιμοποιηθεί για fingerprinting και παρακολούθηση.');
-    await tryRead('device_information', 'manufacturer_name_string', 'Κατασκευαστής', text, 'Αποκαλύπτει τον κατασκευαστή σε όποιον βρίσκεται κοντά.');
-    await tryRead('device_information', 'model_number_string', 'Μοντέλο', text, 'Αποκαλύπτει το ακριβές μοντέλο — άρα και πιθανές ευπάθειες.');
-    await tryRead('device_information', 'firmware_revision_string', 'Έκδοση firmware', text,
-      'Ένας επιτιθέμενος μαθαίνει αν το firmware είναι παλιό και ευάλωτο (π.χ. BrakTooth).');
-    await tryRead('device_information', 'software_revision_string', 'Έκδοση λογισμικού', text, 'Αποκαλύπτει την έκδοση λογισμικού.');
+    await tryRead('battery_service', 'battery_level', 'Battery level', (dv) => `${dv.getUint8(0)}%`,
+      'Readable without pairing — can be used for device fingerprinting and tracking.');
+    await tryRead('device_information', 'manufacturer_name_string', 'Manufacturer', text, 'Reveals the hardware vendor to anyone within radio range.');
+    await tryRead('device_information', 'model_number_string', 'Model number', text, 'Reveals the exact model — helping an attacker look up known CVEs.');
+    await tryRead('device_information', 'firmware_revision_string', 'Firmware version', text,
+      'Tells an attacker whether the firmware is outdated and vulnerable (e.g. BrakTooth).');
+    await tryRead('device_information', 'software_revision_string', 'Software version', text, 'Exposes the exact software revision.');
     try {
       device.gatt.disconnect();
     } catch {
       /* ignore */
     }
   } catch (e: any) {
-    res.error = `Δεν ήταν δυνατή η σύνδεση GATT (${e?.message || 'άγνωστο σφάλμα'}). Ορισμένες συσκευές δεν δέχονται συνδέσεις.`;
+    res.error = `Could not establish GATT connection (${e?.message || 'unknown error'}). Some devices refuse unauthenticated GATT connections.`;
   }
   return res;
 }

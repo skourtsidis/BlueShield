@@ -26,7 +26,7 @@ export function InfoButton({ help, className }: { help: HelpContent; className?:
         e.stopPropagation();
         openHelp(help);
       }}
-      aria-label={`Επεξήγηση: ${help.title}`}
+      aria-label={`Explanation: ${help.title}`}
       className={cn('inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/5 text-sky-300 ring-1 ring-white/10 transition hover:bg-sky-500/20 active:scale-95', className)}
     >
       <Info size={15} />
@@ -220,12 +220,12 @@ export function SeverityBadge({ severity, className }: { severity: Severity; cla
 }
 
 const ACTION_META: Record<EventAction, { label: string; cls: string }> = {
-  blocked: { label: 'Αποκλείστηκε', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/25' },
-  'user-blocked': { label: 'Απορρίφθηκε από εσάς', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/25' },
-  allowed: { label: 'Δεν αποκλείστηκε', cls: 'bg-rose-500/15 text-rose-300 ring-rose-400/30' },
-  'user-allowed': { label: 'Εγκρίθηκε από εσάς', cls: 'bg-rose-500/15 text-rose-300 ring-rose-400/30' },
-  warned: { label: 'Προειδοποίηση', cls: 'bg-amber-500/15 text-amber-300 ring-amber-400/25' },
-  info: { label: 'Πληροφορία', cls: 'bg-slate-500/15 text-slate-300 ring-slate-400/20' },
+  blocked: { label: 'Blocked', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/25' },
+  'user-blocked': { label: 'Rejected by you', cls: 'bg-emerald-500/15 text-emerald-300 ring-emerald-400/25' },
+  allowed: { label: 'Unblocked', cls: 'bg-rose-500/15 text-rose-300 ring-rose-400/30' },
+  'user-allowed': { label: 'Accepted by you', cls: 'bg-rose-500/15 text-rose-300 ring-rose-400/30' },
+  warned: { label: 'Warning', cls: 'bg-amber-500/15 text-amber-300 ring-amber-400/25' },
+  info: { label: 'Info', cls: 'bg-slate-500/15 text-slate-300 ring-slate-400/20' },
 };
 export function ActionBadge({ action }: { action: EventAction }) {
   const m = ACTION_META[action];
@@ -234,10 +234,10 @@ export function ActionBadge({ action }: { action: EventAction }) {
 export const actionLabel = (a: EventAction) => ACTION_META[a].label;
 
 const RISK_META: Record<RiskLevel, { label: string; cls: string; dot: string }> = {
-  safe: { label: 'Ασφαλής', cls: 'bg-emerald-500/15 text-emerald-300', dot: 'bg-emerald-400' },
-  low: { label: 'Χαμηλός κίνδυνος', cls: 'bg-sky-500/15 text-sky-300', dot: 'bg-sky-400' },
-  medium: { label: 'Μέτριος κίνδυνος', cls: 'bg-amber-500/15 text-amber-300', dot: 'bg-amber-400' },
-  high: { label: 'Υψηλός κίνδυνος', cls: 'bg-rose-500/15 text-rose-300', dot: 'bg-rose-500' },
+  safe: { label: 'Safe', cls: 'bg-emerald-500/15 text-emerald-300', dot: 'bg-emerald-400' },
+  low: { label: 'Low risk', cls: 'bg-sky-500/15 text-sky-300', dot: 'bg-sky-400' },
+  medium: { label: 'Medium risk', cls: 'bg-amber-500/15 text-amber-300', dot: 'bg-amber-400' },
+  high: { label: 'High risk', cls: 'bg-rose-500/15 text-rose-300', dot: 'bg-rose-500' },
 };
 export const riskDot = (r: RiskLevel) => RISK_META[r].dot;
 export function RiskBadge({ risk }: { risk: RiskLevel }) {
@@ -255,7 +255,7 @@ export function LiveBadge({ label = 'LIVE' }: { label?: string }) {
     </span>
   );
 }
-export function SimBadge({ label = 'ΠΡΟΣΟΜΟΙΩΣΗ' }: { label?: string }) {
+export function SimBadge({ label = 'SIMULATION' }: { label?: string }) {
   return <span className="inline-flex items-center rounded-full bg-violet-500/15 px-2 py-0.5 text-[10px] font-bold tracking-wider text-violet-300 ring-1 ring-violet-400/25">{label}</span>;
 }
 
@@ -329,7 +329,7 @@ export function BottomSheet({
           <div className="flex items-center gap-3 px-5 pb-3 pt-1">
             {icon}
             <h3 className="flex-1 text-[17px] font-semibold leading-snug text-white">{title}</h3>
-            <button type="button" onClick={onClose} aria-label="Κλείσιμο" className="rounded-full bg-white/5 p-2 text-slate-300 hover:bg-white/10">
+            <button type="button" onClick={onClose} aria-label="Close" className="rounded-full bg-white/5 p-2 text-slate-300 hover:bg-white/10">
               <X size={16} />
             </button>
           </div>
@@ -379,8 +379,8 @@ const DEVICE_ICONS: Record<DeviceType, LucideIcon> = {
 export const deviceIcon = (t: DeviceType, hack = false): LucideIcon => (hack ? Skull : DEVICE_ICONS[t] || CircleHelp);
 
 export const DEVICE_TYPE_LABEL: Record<DeviceType, string> = {
-  headphones: 'Ακουστικά', speaker: 'Ηχείο', watch: 'Ρολόι', fitness: 'Fitness tracker', car: 'Αυτοκίνητο', laptop: 'Υπολογιστής', phone: 'Κινητό',
-  tv: 'Τηλεόραση', beacon: 'Beacon', tracker: 'Tracker', keyboard: 'Πληκτρολόγιο', tool: 'Πλακέτα/Εργαλείο', unknown: 'Άγνωστο',
+  headphones: 'Headphones', speaker: 'Speaker', watch: 'Smartwatch', fitness: 'Fitness tracker', car: 'Car', laptop: 'Computer', phone: 'Phone',
+  tv: 'TV', beacon: 'Beacon', tracker: 'Tracker', keyboard: 'Keyboard', tool: 'Board / Tool', unknown: 'Unknown',
 };
 
 export function useAnimatedNumber(value: number, duration = 700) {
@@ -408,7 +408,7 @@ export function useAnimatedNumber(value: number, duration = 700) {
 
 export function SignalBars({ bars }: { bars: number }) {
   return (
-    <span className="inline-flex items-end gap-[2px]" aria-label={`Σήμα ${bars}/4`}>
+    <span className="inline-flex items-end gap-[2px]" aria-label={`Signal ${bars}/4`}>
       {[1, 2, 3, 4].map((b) => (
         <span key={b} className={cn('w-[3px] rounded-sm', b <= bars ? 'bg-sky-300' : 'bg-white/15')} style={{ height: 3 + b * 3 }} />
       ))}

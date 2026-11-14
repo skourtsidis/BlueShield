@@ -5,7 +5,7 @@ import { getSystemInfo, haversine, startBattery } from '../platform/system';
 import { nativeBonded, nativeInit } from '../platform/ble';
 import type { Screen } from '../types';
 
-/** Ξεκινά τη μηχανή της εφαρμογής: live tick, μπαταρία, πληροφορίες συστήματος, native Bluetooth, GPS, κουμπί «πίσω». */
+/** Boots the live engine: 1-second tick, battery API, OS info, native Bluetooth, GPS geofencing, Android back button. */
 export function useEngine() {
   useEffect(() => {
     const st = useStore.getState();
@@ -25,7 +25,7 @@ export function useEngine() {
       nativeInit((en) => useStore.getState().setLive({ btEnabled: en })).then(async (ok) => {
         if (ok) useStore.getState().setLive({ bonded: await nativeBonded() });
       });
-      // Κουμπί «πίσω» του Android: κλείνει παράθυρα → επιστρέφει στην Αρχική → έξοδος
+      // Android hardware back button: closes modals/sheets → returns Home → exits app
       CapApp.addListener('backButton', () => {
         const s = useStore.getState();
         if (s.pendingRequest) return;
