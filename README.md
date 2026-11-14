@@ -72,6 +72,7 @@ Vite
 Capacitor
 @capacitor-community/bluetooth-le
 GitHub Actions for Android APK builds
+
 🔒 Recommended Bluetooth Security Practices
 Keep Android and your connected devices updated.
 Turn off Bluetooth when you do not need it, and check any separate Bluetooth scanning setting.
@@ -101,6 +102,7 @@ Clearly distinguishing real measurements from simulated data.
 Validating Bluetooth behavior across different Android devices.
 Verifying tracker identification and security-related claims.
 Preparing consistently signed release builds.
+
 📄 License
 Check the repository's LICENSE file, if present, for the terms governing use of this project.
 

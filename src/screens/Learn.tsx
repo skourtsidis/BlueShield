@@ -29,12 +29,12 @@ function ThreatsTab() {
       <Card>
         <SectionTitle
           icon={MapIcon}
-          title="Χάρτης κινδύνου"
-          subtitle="Πόσο πιθανή και πόσο σοβαρή είναι κάθε επίθεση"
+          title="Threat Risk Matrix"
+          subtitle="Likelihood vs. real-world impact of each attack"
           help={{
-            title: 'Χάρτης κινδύνου',
-            body: 'Κάθε κουκκίδα είναι μια επίθεση. Οριζόντια: πόσο πιθανό είναι να τη συναντήσετε. Κάθετα: πόσο σοβαρή ζημιά μπορεί να κάνει. Η κόκκινη περιοχή πάνω δεξιά είναι οι πιο επικίνδυνες.\n\nΑγγίξτε μια κουκκίδα για λεπτομέρειες.',
-            more: 'Εκπαιδευτική εκτίμηση για κινητό ΧΩΡΙΣ πρόσφατες ενημερώσεις. Σε ενημερωμένα κινητά (Android/iOS με τα patches του 2017–2021) η πιθανότητα των BlueBorne/KNOB/BIAS είναι πολύ μικρότερη.',
+            title: 'Threat Risk Matrix',
+            body: 'Each dot represents a Bluetooth threat. Horizontal axis: how likely you are to encounter it in the wild. Vertical axis: how severe the damage can be. The red quadrant at top-right holds the highest-risk threats.\n\nTap any dot to inspect it.',
+            more: 'Educational baseline assuming an unpatched device. On fully updated phones (Android/iOS with 2017–2021 patches applied), the likelihood of BlueBorne, KNOB, and BIAS drops dramatically.',
           }}
         />
         <RiskScatter data={data} selected={sel} onSelect={setSel} />
@@ -48,14 +48,14 @@ function ThreatsTab() {
             </div>
             <p className="mt-1 text-[12.5px] leading-snug text-slate-300">{selA.summary}</p>
             <Button size="sm" variant="ghost" className="-ml-2 mt-1" onClick={() => go('protection')}>
-              Προστασία: {MODULE_MAP[selA.module].name} <ChevronRight size={14} />
+              Shield: {MODULE_MAP[selA.module].name} <ChevronRight size={14} />
             </Button>
           </div>
         )}
       </Card>
 
       <Card>
-        <SectionTitle icon={History} title="Χρονολόγιο επιθέσεων" subtitle="Από τα πρώτα κινητά μέχρι σήμερα — πατήστε για ανάλυση" />
+        <SectionTitle icon={History} title="Attack Timeline" subtitle="From early feature phones to today — tap to expand" />
         <ol className="relative ml-2 border-l border-white/10">
           {[...ATTACKS].sort((a, b) => a.year - b.year).map((a) => {
             const m = MODULE_MAP[a.module];
@@ -75,7 +75,7 @@ function ThreatsTab() {
                 {isOpen && (
                   <div className="anim-fade mt-2 space-y-2 rounded-2xl bg-white/[0.04] p-3">
                     <p className="text-[12.5px] leading-relaxed text-slate-300">{m.threat}</p>
-                    <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-300">Πώς προστατεύομαι</div>
+                    <div className="text-[11px] font-bold uppercase tracking-wide text-emerald-300">How to stay protected</div>
                     <ul className="space-y-1">
                       {m.tips.map((t) => (
                         <li key={t} className="flex gap-2 text-[12px] text-slate-300">
@@ -85,7 +85,7 @@ function ThreatsTab() {
                       ))}
                     </ul>
                     <div className="flex items-center gap-2 pt-1 text-[12px] text-slate-400">
-                      Η προστασία σας τώρα: {modeChip(a.module)}
+                      Your current shield status: {modeChip(a.module)}
                     </div>
                   </div>
                 )}
@@ -109,12 +109,12 @@ function RulesTab() {
     stale: !s.paired.some((p) => daysSince(p.lastUsed) > s.settings.staleDays),
   };
   const actions: Record<RuleId, { label: string; run: () => void }> = {
-    radio: { label: 'Bluetooth σε AUTO', run: () => s.setRadioMode('auto') },
-    updates: { label: 'Έλεγξα για ενημερώσεις', run: () => s.markUpdatesChecked() },
-    pairing: { label: 'Ενεργοποίηση κανόνα', run: () => s.updateSettings({ pairingOnlyTrusted: true }) },
-    reject: { label: 'Αυτόματη απόρριψη', run: () => s.updateSettings({ autoRejectUnknown: true }) },
-    name: { label: 'Αλλαγή ονόματος', run: () => s.openSheet('rename') },
-    stale: { label: 'Αφαίρεση παλιών', run: () => s.removeStale() },
+    radio: { label: 'Set Bluetooth to AUTO', run: () => s.setRadioMode('auto') },
+    updates: { label: 'I checked for updates', run: () => s.markUpdatesChecked() },
+    pairing: { label: 'Enable trusted-place rule', run: () => s.updateSettings({ pairingOnlyTrusted: true }) },
+    reject: { label: 'Enable auto-reject', run: () => s.updateSettings({ autoRejectUnknown: true }) },
+    name: { label: 'Rename device', run: () => s.openSheet('rename') },
+    stale: { label: 'Remove stale devices', run: () => s.removeStale() },
   };
   const done = Object.values(status).filter(Boolean).length;
   return (
@@ -126,9 +126,9 @@ function RulesTab() {
           </span>
         </RingProgress>
         <div className="flex-1">
-          <div className="font-semibold text-white">Οι 6 χρυσοί κανόνες</div>
+          <div className="font-semibold text-white">The 6 Golden Rules</div>
           <p className="mt-0.5 text-[12.5px] leading-snug text-slate-400">
-            {done === RULES.length ? 'Μπράβο! Τηρείτε όλους τους κανόνες προστασίας.' : 'Το σύγχρονο Bluetooth (5.0+) είναι αρκετά ασφαλές — αρκεί να τηρούνται αυτοί οι κανόνες.'}
+            {done === RULES.length ? 'Awesome! You are following every single Bluetooth safety rule.' : 'Modern Bluetooth (5.0+) is quite safe — provided you stick to these six everyday habits.'}
           </p>
         </div>
       </Card>
@@ -139,7 +139,7 @@ function RulesTab() {
             <div className="flex items-start gap-3">
               {ok ? <CircleCheck size={22} className="mt-0.5 shrink-0 text-emerald-400" /> : <Circle size={22} className="mt-0.5 shrink-0 text-slate-500" />}
               <div className="flex-1">
-                <div className="text-[11px] font-bold text-slate-500">ΚΑΝΟΝΑΣ {i + 1}</div>
+                <div className="text-[11px] font-bold text-slate-500">RULE {i + 1}</div>
                 <div className="font-semibold leading-snug text-white">{r.title}</div>
                 <p className="mt-1 text-[12.5px] leading-relaxed text-slate-400">{r.text}</p>
                 {r.note && (
@@ -174,12 +174,12 @@ function GlossaryTab() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Αναζήτηση όρου (π.χ. pairing, κλειδί, MAC)…"
+          placeholder="Search terms (e.g. pairing, key, MAC)…"
           className="w-full rounded-2xl border border-white/10 bg-surface/80 py-3 pl-10 pr-4 text-[14px] text-white outline-none placeholder:text-slate-500 focus:border-sky-400/50"
         />
       </div>
       <Card className="py-1">
-        {list.length === 0 && <p className="py-6 text-center text-[13px] text-slate-400">Δεν βρέθηκε όρος.</p>}
+        {list.length === 0 && <p className="py-6 text-center text-[13px] text-slate-400">No matching glossary term.</p>}
         <div className="divide-y divide-white/[0.06]">
           {list.map((g) => {
             const isOpen = open === g.term || q.length > 1;
@@ -224,11 +224,11 @@ function QuizTab() {
           {score}/{QUIZ.length}
         </div>
         <p className="mt-2 max-w-[260px] text-[14px] leading-relaxed text-slate-300">
-          {pct === 1 ? 'Τέλεια! Είστε πραγματικός ειδικός στην ασφάλεια Bluetooth! 🏆' : pct >= 0.7 ? 'Πολύ καλά! Γνωρίζετε τα βασικά για να προστατεύεστε.' : 'Καλή αρχή! Διαβάστε τις «Απειλές» και τους «Κανόνες» και ξαναδοκιμάστε.'}
+          {pct === 1 ? 'Perfect score! You are a certified Bluetooth security pro! 🏆' : pct >= 0.7 ? 'Great job! You know the essentials to keep your phone safe.' : 'Nice start! Review the "Threats" and "Rules" tabs and give it another shot.'}
         </p>
-        {quizBest !== null && <p className="mt-2 text-[12px] text-slate-500">Καλύτερη επίδοση: {quizBest}/{QUIZ.length}</p>}
+        {quizBest !== null && <p className="mt-2 text-[12px] text-slate-500">Best score: {quizBest}/{QUIZ.length}</p>}
         <Button className="mt-5" icon={RotateCcw} onClick={restart}>
-          Ξανά από την αρχή
+          Play again
         </Button>
       </Card>
     );
@@ -237,9 +237,9 @@ function QuizTab() {
     <Card>
       <div className="mb-3 flex items-center justify-between text-[12px] text-slate-400">
         <span>
-          Ερώτηση {idx + 1} από {QUIZ.length}
+          Question {idx + 1} of {QUIZ.length}
         </span>
-        <span>Σκορ: {score}</span>
+        <span>Score: {score}</span>
       </div>
       <ProgressBar value={idx + (picked !== null ? 1 : 0)} max={QUIZ.length} />
       <h3 className="mt-4 text-[16px] font-semibold leading-snug text-white">{q.q}</h3>
@@ -264,7 +264,7 @@ function QuizTab() {
               )}
             >
               <span className={cn('flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[12px] font-bold', state === 'correct' ? 'bg-emerald-400 text-emerald-950' : state === 'wrong' ? 'bg-rose-500 text-white' : 'bg-white/10')}>
-                {String.fromCharCode(913 + i)}
+                {String.fromCharCode(65 + i)}
               </span>
               {o}
             </button>
@@ -274,7 +274,7 @@ function QuizTab() {
       {picked !== null && (
         <div className="anim-fade mt-4">
           <div className={cn('rounded-2xl p-3.5 text-[13px] leading-relaxed', picked === q.correct ? 'bg-emerald-500/10 text-emerald-100' : 'bg-rose-500/10 text-rose-100')}>
-            <b>{picked === q.correct ? 'Σωστά! ' : 'Λάθος. '}</b>
+            <b>{picked === q.correct ? 'Correct! ' : 'Not quite. '}</b>
             {q.explain}
           </div>
           <Button
@@ -289,7 +289,7 @@ function QuizTab() {
               }
             }}
           >
-            {idx + 1 >= QUIZ.length ? 'Αποτελέσματα' : 'Επόμενη ερώτηση'} <ArrowRight size={15} />
+            {idx + 1 >= QUIZ.length ? 'See results' : 'Next question'} <ArrowRight size={15} />
           </Button>
         </div>
       )}
@@ -305,14 +305,14 @@ export function Learn() {
         value={tab}
         onChange={setTab}
         options={[
-          { value: 'threats', label: 'Απειλές', icon: Bug },
-          { value: 'rules', label: 'Κανόνες', icon: ListChecks },
-          { value: 'glossary', label: 'Λεξικό', icon: BookOpen },
-          { value: 'quiz', label: 'Κουίζ', icon: Trophy },
+          { value: 'threats', label: 'Threats', icon: Bug },
+          { value: 'rules', label: 'Rules', icon: ListChecks },
+          { value: 'glossary', label: 'Glossary', icon: BookOpen },
+          { value: 'quiz', label: 'Quiz', icon: Trophy },
         ]}
       />
       {tab === 'threats' && (
-        <Hint>Εδώ θα βρείτε όλες τις γνωστές επιθέσεις Bluetooth, εξηγημένες απλά. Ξεκινήστε από τον χάρτη κινδύνου ή το χρονολόγιο.</Hint>
+        <Hint>Explore every major Bluetooth security threat explained in plain English. Tap any dot on the risk matrix or any item in the timeline.</Hint>
       )}
       {tab === 'threats' && <ThreatsTab />}
       {tab === 'rules' && <RulesTab />}

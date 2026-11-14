@@ -7,7 +7,7 @@ import { initPwa } from './platform/pwa';
 
 initPwa();
 
-// Service worker: λειτουργία offline & ειδοποιήσεις (μόνο στον browser, όχι στο APK)
+// Service worker: offline caching & system notifications (browser PWA only, skipped inside native APK)
 if (import.meta.env.PROD && 'serviceWorker' in navigator && !Capacitor.isNativePlatform() && window.isSecureContext) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(() => undefined);

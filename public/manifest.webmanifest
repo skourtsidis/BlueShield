@@ -1,8 +1,8 @@
 {
-  "name": "BlueShield — Ασπίδα Bluetooth",
+  "name": "BlueShield — Bluetooth Security",
   "short_name": "BlueShield",
-  "description": "Προστασία του κινητού σας από τους κινδύνους ασφαλείας του Bluetooth, με απλές εξηγήσεις για αρχάριους.",
-  "lang": "el",
+  "description": "Protect your phone against Bluetooth security threats with live charts, ON/OFF/AUTO shields, and plain-English guidance for beginners.",
+  "lang": "en",
   "id": "./",
   "start_url": "./",
   "scope": "./",

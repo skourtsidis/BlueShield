@@ -1,5 +1,5 @@
-/* BlueShield service worker — λειτουργία offline & ειδοποιήσεις */
-const CACHE = 'blueshield-v1';
+/* BlueShield service worker — offline caching & system notifications */
+const CACHE = 'blueshield-en-v2';
 const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -27,7 +27,7 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
 
-  // Σελίδες: πρώτα δίκτυο (για να έρχονται οι νέες εκδόσεις), μετά cache (offline)
+  // Navigation requests: network-first, falling back to cached app shell offline
   if (req.mode === 'navigate') {
     event.respondWith(
       fetch(req)
@@ -41,7 +41,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Στατικά αρχεία: πρώτα cache
+  // Static assets: cache-first
   event.respondWith(
     caches.match(req).then(
       (cached) =>

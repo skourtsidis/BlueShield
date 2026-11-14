@@ -24,75 +24,75 @@ function useChecks(): Check[] {
     const out: Check[] = [];
     out.push(
       s.radioMode === 'on'
-        ? { id: 'radio', title: 'Κατάσταση Bluetooth', status: 'warn', detail: 'Το Bluetooth είναι μόνιμα ανοιχτό. Με AUTO κλείνει μόνο του όταν δεν το χρησιμοποιείτε.', fix: () => s.setRadioMode('auto'), fixLabel: 'Ρύθμιση σε AUTO' }
-        : { id: 'radio', title: 'Κατάσταση Bluetooth', status: 'pass', detail: s.radioMode === 'off' ? 'Bluetooth OFF — η πιο ασφαλής επιλογή.' : 'AUTO: κλείνει αυτόματα όταν δεν χρησιμοποιείται.', live: s.live.btEnabled !== null },
+        ? { id: 'radio', title: 'Bluetooth radio mode', status: 'warn', detail: 'Bluetooth is left permanently ON. Switching to AUTO turns it off automatically whenever idle.', fix: () => s.setRadioMode('auto'), fixLabel: 'Set to AUTO' }
+        : { id: 'radio', title: 'Bluetooth radio mode', status: 'pass', detail: s.radioMode === 'off' ? 'Bluetooth OFF — maximum possible safety.' : 'AUTO: switches off automatically when idle.', live: s.live.btEnabled !== null },
     );
     out.push(
       s.discoverable
-        ? { id: 'disc', title: 'Ορατότητα (discoverable)', status: 'fail', detail: 'Το κινητό εμφανίζεται σε όλους γύρω σας — ευάλωτο σε Bluejacking.', fix: () => s.setDiscoverable(false), fixLabel: 'Απενεργοποίηση' }
-        : { id: 'disc', title: 'Ορατότητα (discoverable)', status: 'pass', detail: 'Το κινητό δεν εμφανίζεται σε αγνώστους.' },
+        ? { id: 'disc', title: 'Discoverable visibility', status: 'fail', detail: 'Your phone is visible to everyone nearby — exposed to Bluejacking.', fix: () => s.setDiscoverable(false), fixLabel: 'Turn off' }
+        : { id: 'disc', title: 'Discoverable visibility', status: 'pass', detail: 'Hidden from nearby strangers.' },
     );
     const na = analyzeName(s.deviceName);
     out.push(
       na.level === 'safe'
-        ? { id: 'name', title: 'Όνομα συσκευής', status: 'pass', detail: `«${s.deviceName}» — ουδέτερο, δεν αποκαλύπτει στοιχεία.` }
-        : { id: 'name', title: 'Όνομα συσκευής', status: na.level === 'danger' ? 'fail' : 'warn', detail: `«${s.deviceName}»: ${na.issues.join(' ')}`, fix: () => s.setDeviceName(suggestName()), fixLabel: 'Ουδέτερο όνομα' },
+        ? { id: 'name', title: 'Device name privacy', status: 'pass', detail: `“${s.deviceName}” — neutral, leaks no personal or model info.` }
+        : { id: 'name', title: 'Device name privacy', status: na.level === 'danger' ? 'fail' : 'warn', detail: `“${s.deviceName}”: ${na.issues.join(' ')}`, fix: () => s.setDeviceName(suggestName()), fixLabel: 'Use neutral name' },
     );
     const stale = s.paired.filter((p) => daysSince(p.lastUsed) > s.settings.staleDays);
     out.push(
       stale.length
-        ? { id: 'stale', title: 'Παλιές αποθηκευμένες συσκευές', status: stale.length > 1 ? 'fail' : 'warn', detail: `${stale.map((p) => p.name).join(', ')} — αχρησιμοποίητες πάνω από ${s.settings.staleDays} ημέρες (ρίσκο BIAS).`, fix: () => s.removeStale(), fixLabel: `Αφαίρεση (${stale.length})` }
-        : { id: 'stale', title: 'Παλιές αποθηκευμένες συσκευές', status: 'pass', detail: 'Καμία ξεχασμένη συσκευή στη λίστα.' },
+        ? { id: 'stale', title: 'Stale paired devices', status: stale.length > 1 ? 'fail' : 'warn', detail: `${stale.map((p) => p.name).join(', ')} — unused for over ${s.settings.staleDays} days (BIAS spoofing risk).`, fix: () => s.removeStale(), fixLabel: `Remove (${stale.length})` }
+        : { id: 'stale', title: 'Stale paired devices', status: 'pass', detail: 'No forgotten devices in your paired list.' },
     );
     const sys = s.sysInfo;
     const checked = s.updatesCheckedAt && Date.now() - s.updatesCheckedAt < 30 * 86400000;
     const sysStatus: Check['status'] = sys?.support === 'fail' ? 'fail' : sys?.support === 'warn' || !checked ? 'warn' : 'pass';
     out.push({
       id: 'os',
-      title: 'Ενημερώσεις λογισμικού',
+      title: 'OS security updates',
       status: sysStatus,
       live: !!sys?.live,
-      detail: `${sys ? `${sys.osName}${sys.version ? ' ' + sys.version : ''}${sys.model ? ' · ' + sys.model : ''}. ${sys.supportText}` : 'Ανάγνωση συστήματος…'}${checked ? ' Ελέγξατε για ενημερώσεις πρόσφατα ✓' : ' Δεν έχετε επιβεβαιώσει έλεγχο ενημερώσεων τις τελευταίες 30 ημέρες.'}`,
+      detail: `${sys ? `${sys.osName}${sys.version ? ' ' + sys.version : ''}${sys.model ? ' · ' + sys.model : ''}. ${sys.supportText}` : 'Reading system info…'}${checked ? ' Updates verified recently ✓' : ' You have not confirmed checking for OS updates in the past 30 days.'}`,
       fix: checked ? undefined : () => s.markUpdatesChecked(),
-      fixLabel: 'Έλεγξα για ενημερώσεις',
+      fixLabel: 'I checked for updates',
     });
     out.push(
       s.modules.knob === 'off'
-        ? { id: 'knob', title: 'Μήκος κλειδιών κρυπτογράφησης (KNOB)', status: 'fail', detail: 'Η προστασία KNOB είναι OFF — οι συσκευές μπορεί να συμφωνήσουν σε κλειδί 1 byte.', fix: () => { s.setModule('knob', 'on'); s.updateSettings({ minKeyBytes: 16 }); }, fixLabel: 'ON με 16 bytes' }
+        ? { id: 'knob', title: 'Encryption key length (KNOB)', status: 'fail', detail: 'KNOB Key Protection is OFF — devices could negotiate a 1-byte key.', fix: () => { s.setModule('knob', 'on'); s.updateSettings({ minKeyBytes: 16 }); }, fixLabel: 'ON with 16 bytes' }
         : s.settings.minKeyBytes < 16
-          ? { id: 'knob', title: 'Μήκος κλειδιών κρυπτογράφησης (KNOB)', status: 'warn', detail: `Ελάχιστο κλειδί: ${s.settings.minKeyBytes} bytes. Προτείνονται 16 bytes (128 bit).`, fix: () => s.updateSettings({ minKeyBytes: 16 }), fixLabel: 'Ορισμός 16 bytes' }
-          : { id: 'knob', title: 'Μήκος κλειδιών κρυπτογράφησης (KNOB)', status: 'pass', detail: 'Επιβάλλεται ελάχιστο κλειδί 16 bytes.' },
+          ? { id: 'knob', title: 'Encryption key length (KNOB)', status: 'warn', detail: `Minimum key: ${s.settings.minKeyBytes} bytes. 16 bytes (128-bit) is recommended.`, fix: () => s.updateSettings({ minKeyBytes: 16 }), fixLabel: 'Set 16 bytes' }
+          : { id: 'knob', title: 'Encryption key length (KNOB)', status: 'pass', detail: '16-byte (128-bit) minimum key enforced.' },
     );
     const unenc = s.paired.filter((p) => !p.encrypted);
     out.push(
       unenc.length && s.modules.sniffing !== 'on'
-        ? { id: 'enc', title: 'Μη κρυπτογραφημένες συνδέσεις', status: 'warn', detail: `${unenc.map((p) => p.name).join(', ')}: χωρίς κρυπτογράφηση — ευάλωτες σε sniffing.`, fix: () => s.setModule('sniffing', 'on'), fixLabel: 'Αντι-Υποκλοπή ON' }
-        : { id: 'enc', title: 'Μη κρυπτογραφημένες συνδέσεις', status: 'pass', detail: unenc.length ? 'Υπάρχουν μη κρυπτογραφημένες συσκευές, αλλά η Αντι-Υποκλοπή είναι ON.' : 'Όλες οι συνδέσεις είναι κρυπτογραφημένες.' },
+        ? { id: 'enc', title: 'Unencrypted BLE links', status: 'warn', detail: `${unenc.map((p) => p.name).join(', ')}: transmits without encryption — exposed to sniffing.`, fix: () => s.setModule('sniffing', 'on'), fixLabel: 'Anti-Sniffing ON' }
+        : { id: 'enc', title: 'Unencrypted BLE links', status: 'pass', detail: unenc.length ? 'Unencrypted accessories exist, but Anti-Sniffing is set to ON.' : 'All paired connections use encryption.' },
     );
     const off = Object.values(s.modules).filter((m) => m === 'off').length;
     out.push(
       s.master === 'off'
-        ? { id: 'mods', title: 'Μονάδες προστασίας', status: 'fail', detail: 'Η κεντρική προστασία είναι OFF — καμία μονάδα δεν λειτουργεί.', fix: () => s.setMaster('on'), fixLabel: 'Ενεργοποίηση' }
+        ? { id: 'mods', title: 'Protection modules', status: 'fail', detail: 'Master protection is OFF — all shields are disabled.', fix: () => s.setMaster('on'), fixLabel: 'Enable master' }
         : off
-          ? { id: 'mods', title: 'Μονάδες προστασίας', status: off > 2 ? 'fail' : 'warn', detail: `${off} μονάδες είναι OFF.`, fix: () => s.setAllModules('recommended'), fixLabel: 'Προτεινόμενες ρυθμίσεις' }
-          : { id: 'mods', title: 'Μονάδες προστασίας', status: 'pass', detail: 'Όλες οι μονάδες είναι ενεργές (ON ή AUTO).' },
+          ? { id: 'mods', title: 'Protection modules', status: off > 2 ? 'fail' : 'warn', detail: `${off} protection module${off === 1 ? ' is' : 's are'} set to OFF.`, fix: () => s.setAllModules('recommended'), fixLabel: 'Apply recommended' }
+          : { id: 'mods', title: 'Protection modules', status: 'pass', detail: 'All 10 modules are active (ON or AUTO).' },
     );
-    const bad = [!s.settings.pairingOnlyTrusted && 'pairing μόνο σε έμπιστες τοποθεσίες', !s.settings.autoRejectUnknown && 'αυτόματη απόρριψη άγνωστων αιτημάτων'].filter(Boolean);
+    const bad = [!s.settings.pairingOnlyTrusted && 'pair only in trusted places', !s.settings.autoRejectUnknown && 'auto-reject unknown requests'].filter(Boolean);
     out.push(
       bad.length
-        ? { id: 'prac', title: 'Καλές πρακτικές', status: 'warn', detail: `Δεν είναι ενεργά: ${bad.join(' και ')}.`, fix: () => s.updateSettings({ pairingOnlyTrusted: true, autoRejectUnknown: true }), fixLabel: 'Ενεργοποίηση' }
-        : { id: 'prac', title: 'Καλές πρακτικές', status: 'pass', detail: 'Pairing μόνο σε έμπιστους χώρους και αυτόματη απόρριψη αγνώστων.' },
+        ? { id: 'prac', title: 'Security best practices', status: 'warn', detail: `Not yet enabled: ${bad.join(' and ')}.`, fix: () => s.updateSettings({ pairingOnlyTrusted: true, autoRejectUnknown: true }), fixLabel: 'Enable both' }
+        : { id: 'prac', title: 'Security best practices', status: 'pass', detail: 'Trusted-place pairing & auto-reject unknown prompts enabled.' },
     );
     const danger = s.nearby.filter((d) => d.risk === 'high');
     out.push(
       danger.length
-        ? { id: 'near', title: 'Ύποπτες συσκευές κοντά σας', status: 'warn', detail: `${danger.length} ύποπτ${danger.length === 1 ? 'η' : 'ες'}: ${danger.map((d) => d.name || d.label || 'άγνωστη').join(', ')}.`, nav: 'radar', fixLabel: 'Προβολή στο Ραντάρ', live: s.live.scanning }
-        : { id: 'near', title: 'Ύποπτες συσκευές κοντά σας', status: 'pass', detail: s.radioOn ? 'Δεν εντοπίστηκαν ύποπτες συσκευές.' : 'Bluetooth κλειστό — δεν σας «βλέπει» κανείς.', live: s.live.scanning },
+        ? { id: 'near', title: 'Suspicious devices nearby', status: 'warn', detail: `${danger.length} high-risk nearby: ${danger.map((d) => d.name || d.label || 'unknown').join(', ')}.`, nav: 'radar', fixLabel: 'Inspect on Radar', live: s.live.scanning }
+        : { id: 'near', title: 'Suspicious devices nearby', status: 'pass', detail: s.radioOn ? 'No high-risk devices detected around you.' : 'Bluetooth is off — invisible to nearby scanners.', live: s.live.scanning },
     );
     out.push(
       s.modules.dos === 'off'
-        ? { id: 'dos', title: 'Προστασία DoS & μπαταρίας', status: 'warn', detail: 'Η προστασία από πλημμύρα πακέτων είναι OFF.', fix: () => s.setModule('dos', 'auto'), fixLabel: 'Ρύθμιση σε AUTO' }
-        : { id: 'dos', title: 'Προστασία DoS & μπαταρίας', status: 'pass', detail: `Ενεργή. Μπαταρία: ${Math.round(s.battery.level)}%${s.battery.charging ? ' (φορτίζει)' : ''}.`, live: s.battery.source === 'live' },
+        ? { id: 'dos', title: 'Anti-DoS & battery guard', status: 'warn', detail: 'Packet-flood protection is OFF.', fix: () => s.setModule('dos', 'auto'), fixLabel: 'Set to AUTO' }
+        : { id: 'dos', title: 'Anti-DoS & battery guard', status: 'pass', detail: `Active. Battery: ${Math.round(s.battery.level)}%${s.battery.charging ? ' (charging)' : ''}.`, live: s.battery.source === 'live' },
     );
     return out;
   }, [s]);
@@ -135,13 +135,13 @@ function AuditInner() {
       open={open}
       onClose={() => openSheet(null)}
       tall
-      title="Έλεγχος ασφαλείας"
+      title="Security Audit"
       icon={<IconBox icon={ScanSearch} size="sm" />}
       footer={
         done ? (
           <div className="flex gap-2">
             <Button variant="secondary" icon={RotateCcw} onClick={() => setRun((r) => r + 1)}>
-              Ξανά
+              Re-scan
             </Button>
             {fixable.length ? (
               <Button
@@ -150,14 +150,14 @@ function AuditInner() {
                 className="flex-1"
                 onClick={() => {
                   fixable.forEach((c) => c.fix?.());
-                  toast(`Διορθώθηκαν ${fixable.length} ζητήματα`, 'success');
+                  toast(`Fixed ${fixable.length} security issue${fixable.length === 1 ? '' : 's'}`, 'success');
                 }}
               >
-                Διόρθωση όλων ({fixable.length})
+                Fix all ({fixable.length})
               </Button>
             ) : (
               <Button className="flex-1" icon={PartyPopper} onClick={() => openSheet(null)}>
-                Τέλεια!
+                All clear!
               </Button>
             )}
           </div>
@@ -169,7 +169,7 @@ function AuditInner() {
           <div className="flex items-center gap-3">
             <LoaderCircle className="animate-spin text-sky-300" size={22} />
             <div className="flex-1">
-              <div className="text-sm font-semibold text-white">Γίνεται έλεγχος… {Math.min(step + 1, checks.length)}/{checks.length}</div>
+              <div className="text-sm font-semibold text-white">Running checks… {Math.min(step + 1, checks.length)}/{checks.length}</div>
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-white/10">
                 <div className="h-full rounded-full bg-sky-400 transition-all duration-300" style={{ width: `${(step / checks.length) * 100}%` }} />
               </div>
@@ -178,7 +178,7 @@ function AuditInner() {
         ) : (
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-sm text-slate-400">Βαθμολογία</div>
+              <div className="text-sm text-slate-400">Security Score</div>
               <div className="text-3xl font-extrabold tabular-nums" style={{ color: score.color }}>
                 {score.total}
                 <span className="text-base font-medium text-slate-500">/100</span>
@@ -189,10 +189,10 @@ function AuditInner() {
                 <div className="text-lg font-bold text-emerald-400">{counts.pass}</div>OK
               </div>
               <div>
-                <div className="text-lg font-bold text-amber-400">{counts.warn}</div>Προσοχή
+                <div className="text-lg font-bold text-amber-400">{counts.warn}</div>Warn
               </div>
               <div>
-                <div className="text-lg font-bold text-rose-400">{counts.fail}</div>Κίνδυνος
+                <div className="text-lg font-bold text-rose-400">{counts.fail}</div>Risk
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ function AuditInner() {
                         } else c.fix?.();
                       }}
                     >
-                      {c.fixLabel || 'Διόρθωση'}
+                      {c.fixLabel || 'Fix'}
                     </Button>
                   )}
                 </div>

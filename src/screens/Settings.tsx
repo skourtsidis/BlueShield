@@ -66,9 +66,9 @@ export function SettingsScreen() {
       const p = await getPosition();
       const pl = places.find((x) => x.id === id);
       if (pl) addPlace({ ...pl, lat: p.lat, lon: p.lon });
-      toast(`Αποθηκεύτηκε η τρέχουσα θέση ως «${pl?.name}» (ακρίβεια ~${Math.round(p.accuracy)} μ.)`, 'success');
+      toast(`Saved current coordinates as “${pl?.name}” (±${Math.round(p.accuracy)} m)`, 'success');
     } catch (e) {
-      toast(e instanceof Error ? e.message : 'Σφάλμα τοποθεσίας', 'warning');
+      toast(e instanceof Error ? e.message : 'Location error', 'warning');
     }
   };
 
@@ -76,82 +76,82 @@ export function SettingsScreen() {
     const st = useStore.getState();
     const data = { app: 'BlueShield', exportedAt: new Date().toISOString(), settings: st.settings, modules: st.modules, master: st.master, radioMode: st.radioMode, paired: st.paired, events: st.events };
     downloadFile(`blueshield-backup-${new Date().toISOString().slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json');
-    toast('Το αντίγραφο ασφαλείας δημιουργήθηκε', 'success');
+    toast('JSON backup exported', 'success');
   };
 
   const capsList: { label: string; ok: boolean; note: string }[] = [
-    { label: 'Εφαρμογή Android (APK)', ok: caps.native, note: caps.native ? 'Εκτελείται ως εγγενής εφαρμογή' : 'Εκτελείται σε browser' },
-    { label: 'Κατάσταση Bluetooth συστήματος', ok: live.btEnabled !== null, note: live.btEnabled !== null ? (live.btEnabled ? 'Ενεργό' : 'Ανενεργό') : 'Μόνο στο APK' },
-    { label: 'Σάρωση BLE συσκευών & trackers', ok: caps.native || caps.leScan, note: caps.native ? 'Native σάρωση' : caps.leScan ? 'Web Bluetooth Scanning' : 'Μόνο στο APK' },
-    { label: 'Επιθεώρηση συσκευής BLE', ok: caps.webBluetooth, note: caps.webBluetooth ? 'Web Bluetooth' : 'Chrome/Edge σε Android ή υπολογιστή' },
-    { label: 'Μπαταρία', ok: battery.source === 'live', note: battery.source === 'live' ? `${Math.round(battery.level)}%` : 'Δεν υποστηρίζεται — προσομοίωση' },
-    { label: 'Έκδοση λειτουργικού', ok: !!sys?.live, note: sys ? `${sys.osName} ${sys.version ?? ''}` : '—' },
-    { label: 'GPS (έμπιστες τοποθεσίες)', ok: caps.geolocation, note: caps.geolocation ? 'Διαθέσιμο' : 'Μη διαθέσιμο' },
-    { label: 'Ειδοποιήσεις', ok: caps.notifications, note: caps.notifications ? 'Διαθέσιμες' : 'Μη διαθέσιμες εδώ' },
-    { label: 'Δόνηση', ok: caps.vibrate, note: caps.vibrate ? 'Διαθέσιμη' : 'Μη διαθέσιμη' },
+    { label: 'Android Native App (APK)', ok: caps.native, note: caps.native ? 'Running natively via Capacitor' : 'Running in web browser' },
+    { label: 'System Bluetooth state', ok: live.btEnabled !== null, note: live.btEnabled !== null ? (live.btEnabled ? 'Enabled' : 'Disabled') : 'APK only' },
+    { label: 'Live BLE device & tracker scan', ok: caps.native || caps.leScan, note: caps.native ? 'Native scanner' : caps.leScan ? 'Web Bluetooth Scanning' : 'APK only' },
+    { label: 'BLE GATT privacy inspector', ok: caps.webBluetooth, note: caps.webBluetooth ? 'Web Bluetooth' : 'Chrome/Edge on Android or desktop' },
+    { label: 'Battery telemetry', ok: battery.source === 'live', note: battery.source === 'live' ? `${Math.round(battery.level)}%` : 'Unsupported — simulated' },
+    { label: 'OS version detection', ok: !!sys?.live, note: sys ? `${sys.osName} ${sys.version ?? ''}` : '—' },
+    { label: 'GPS (trusted geofences)', ok: caps.geolocation, note: caps.geolocation ? 'Available' : 'Unavailable' },
+    { label: 'System notifications', ok: caps.notifications, note: caps.notifications ? 'Available' : 'Unavailable here' },
+    { label: 'Haptic vibration', ok: caps.vibrate, note: caps.vibrate ? 'Available' : 'Unavailable' },
   ];
 
   const LOC_ICONS: Record<LocationCtx, LucideIcon> = { home: House, work: Building, public: Coffee };
 
   return (
     <div className="space-y-5 px-4 pb-8 pt-4">
-      <Section title="Εμφάνιση & βοήθεια">
+      <Section title="Guidance & Display">
         <Row
           icon={GraduationCap}
-          title="Λειτουργία αρχαρίου"
-          desc="Απλές εξηγήσεις και συμβουλές σε κάθε οθόνη"
-          help={{ title: 'Λειτουργία αρχαρίου', body: 'Όταν είναι ενεργή, βλέπετε κίτρινα πλαίσια με συμβουλές και εξηγήσεις σε όλη την εφαρμογή. Όταν είναι ανενεργή, εμφανίζονται αυτόματα οι τεχνικές λεπτομέρειες (CVE, πρωτόκολλα) για προχωρημένους.' }}
-          right={<Toggle checked={s.beginnerMode} onChange={(v) => update({ beginnerMode: v })} label="Λειτουργία αρχαρίου" />}
+          title="Beginner Mode"
+          desc="Plain-English tips and analogies across every screen"
+          help={{ title: 'Beginner Mode', body: 'When enabled, amber tip callouts and plain-language guidance appear throughout the app. When disabled, technical CVE and protocol notes expand automatically for power users.' }}
+          right={<Toggle checked={s.beginnerMode} onChange={(v) => update({ beginnerMode: v })} label="Beginner Mode" />}
         />
       </Section>
 
-      <Section title="Αυτοματισμοί Bluetooth (λειτουργία AUTO)">
+      <Section title="Bluetooth Automations (AUTO mode)">
         <Row
           icon={Timer}
-          title="Αυτόματο κλείσιμο μετά από αδράνεια"
-          desc="Όταν καμία συσκευή δεν είναι συνδεδεμένη"
-          help={{ title: 'Αυτόματο κλείσιμο', body: 'Στη λειτουργία AUTO, αν δεν υπάρχει καμία συνδεδεμένη συσκευή (ακουστικά, ρολόι κ.λπ.) για όσα λεπτά ορίσετε, το Bluetooth κλείνει μόνο του. Λιγότερος χρόνος = περισσότερη ασφάλεια.', more: 'Στο Android 13+ οι εφαρμογές δεν μπορούν να κλείσουν το Bluetooth. Στο APK, μόλις περάσει ο χρόνος λαμβάνετε ειδοποίηση με οδηγία να το κλείσετε.' }}
+          title="Idle auto-shutoff timer"
+          desc="When no paired device is connected"
+          help={{ title: 'Idle Auto-Shutoff', body: 'In AUTO mode, if zero devices (earbuds, watch, car) remain connected for this many minutes, Bluetooth turns off automatically. Shorter timeout = tighter security.', more: 'On Android 13+, apps cannot silently disable Bluetooth. In the APK, BlueShield alerts you as soon as the timer expires and offers a shortcut to Bluetooth Settings.' }}
         >
-          <Slider value={s.autoOffMinutes} min={1} max={60} onChange={(v) => update({ autoOffMinutes: v })} format={(v) => `${v} λεπτ${v === 1 ? 'ό' : 'ά'}`} />
+          <Slider value={s.autoOffMinutes} min={1} max={60} onChange={(v) => update({ autoOffMinutes: v })} format={(v) => `${v} min`} />
         </Row>
         <Row
           icon={Moon}
-          title="Νυχτερινή λειτουργία"
-          desc="Κλείσιμο του Bluetooth τις ώρες ύπνου"
-          right={<Toggle checked={s.nightEnabled} onChange={(v) => update({ nightEnabled: v })} label="Νυχτερινή λειτουργία" />}
+          title="Night shutoff schedule"
+          desc="Turn Bluetooth off during sleeping hours"
+          right={<Toggle checked={s.nightEnabled} onChange={(v) => update({ nightEnabled: v })} label="Night schedule" />}
         >
           {s.nightEnabled && (
             <div className="flex items-center gap-2 text-[13px] text-slate-300">
-              Από
+              From
               <input type="time" value={s.nightFrom} onChange={(e) => update({ nightFrom: e.target.value })} className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5 text-white [color-scheme:dark]" />
-              έως
+              to
               <input type="time" value={s.nightTo} onChange={(e) => update({ nightTo: e.target.value })} className="rounded-xl border border-white/10 bg-black/30 px-2 py-1.5 text-white [color-scheme:dark]" />
             </div>
           )}
         </Row>
         <Row
           icon={MapPin}
-          title="Κλείσιμο όταν φεύγω από έμπιστο χώρο"
-          desc="π.χ. όταν βγαίνετε από το σπίτι"
-          right={<Toggle checked={s.offWhenLeaving} onChange={(v) => update({ offWhenLeaving: v })} label="Κλείσιμο όταν φεύγω" />}
+          title="Turn off when leaving a trusted place"
+          desc="e.g. when stepping out of Home into public"
+          right={<Toggle checked={s.offWhenLeaving} onChange={(v) => update({ offWhenLeaving: v })} label="Turn off when leaving" />}
         />
-        <Row icon={Eye} title="Αυτόματο κλείσιμο ορατότητας" desc="Πόση ώρα μένει ορατό το κινητό όταν το ενεργοποιείτε">
+        <Row icon={Eye} title="Discoverable auto-hide timer" desc="How long your phone stays visible when you turn discoverable on">
           <Segmented<number>
             size="sm"
             value={s.discoverableTimeout}
             onChange={(v) => update({ discoverableTimeout: v })}
             options={[
-              { value: 30, label: '30″' },
-              { value: 60, label: '1′' },
-              { value: 120, label: '2′' },
-              { value: 300, label: '5′' },
+              { value: 30, label: '30s' },
+              { value: 60, label: '1m' },
+              { value: 120, label: '2m' },
+              { value: 300, label: '5m' },
             ]}
           />
         </Row>
       </Section>
 
-      <Section title="Τοποθεσίες">
-        <Row icon={MapPin} title="Πού βρίσκεστε τώρα" desc="Επηρεάζει τις αποφάσεις της λειτουργίας AUTO">
+      <Section title="Locations">
+        <Row icon={MapPin} title="Current location context" desc="Drives smart AUTO mode decisions">
           <Segmented<LocationCtx>
             size="sm"
             value={location}
@@ -161,9 +161,9 @@ export function SettingsScreen() {
         </Row>
         <Row
           icon={LocateFixed}
-          title="Αυτόματος εντοπισμός με GPS"
-          desc={caps.geolocation ? 'Αλλάζει μόνη της την τοποθεσία όταν μπαίνετε/βγαίνετε από έμπιστο χώρο' : 'Το GPS δεν είναι διαθέσιμο'}
-          help={{ title: 'Αυτόματος εντοπισμός', body: 'Ορίστε μία φορά τη θέση του σπιτιού και της εργασίας σας (πατώντας «Εδώ» όταν βρίσκεστε εκεί). Μετά, η εφαρμογή καταλαβαίνει μόνη της πότε είστε σε έμπιστο χώρο και πότε όχι. Η θέση σας αποθηκεύεται ΜΟΝΟ στη συσκευή σας.' }}
+          title="Automatic GPS geofencing"
+          desc={caps.geolocation ? 'Switches location automatically when entering/leaving trusted zones' : 'GPS is unavailable'}
+          help={{ title: 'Automatic GPS Geofencing', body: 'Pin your Home and Work once by tapping "Set here" while standing there. BlueShield then detects automatically whether you are inside a trusted zone or out in public. Your coordinates stay strictly on your device.' }}
           right={
             <Toggle
               checked={s.useGps}
@@ -174,7 +174,7 @@ export function SettingsScreen() {
                     await getPosition();
                     update({ useGps: true });
                   } catch (e) {
-                    toast(e instanceof Error ? e.message : 'Σφάλμα GPS', 'warning');
+                    toast(e instanceof Error ? e.message : 'GPS error', 'warning');
                   }
                 } else update({ useGps: false });
               }}
@@ -188,10 +188,10 @@ export function SettingsScreen() {
                 {p.kind === 'home' ? <House size={15} className="text-sky-300" /> : <Building size={15} className="text-sky-300" />}
                 <div className="flex-1 text-[12.5px]">
                   <div className="text-slate-200">{p.name}</div>
-                  <div className="text-[11px] text-slate-500">{p.lat != null ? `Ορίστηκε · ακτίνα ${p.radius} μ.` : 'Δεν έχει οριστεί θέση'}</div>
+                  <div className="text-[11px] text-slate-500">{p.lat != null ? `Pinned · ${p.radius} m radius` : 'Not pinned yet'}</div>
                 </div>
                 <Button size="sm" variant="secondary" disabled={!caps.geolocation} onClick={() => void setPlaceHere(p.id)}>
-                  Εδώ
+                  Set here
                 </Button>
               </div>
             ))}
@@ -199,45 +199,45 @@ export function SettingsScreen() {
         </Row>
       </Section>
 
-      <Section title="Ασφάλεια">
+      <Section title="Security Policies">
         <Row
           icon={Link2}
-          title="Pairing μόνο σε έμπιστες τοποθεσίες"
-          desc="Μπλοκάρει νέες συζεύξεις σε δημόσιους χώρους"
-          help={{ title: 'Pairing μόνο σε έμπιστες τοποθεσίες', body: 'Η ανταλλαγή των κλειδιών ασφαλείας γίνεται τη στιγμή της πρώτης σύνδεσης. Σε δημόσιους χώρους κάποιος μπορεί να την υποκλέψει (sniffing). Με αυτή τη ρύθμιση, η σύζευξη επιτρέπεται μόνο στο σπίτι ή στην εργασία.' }}
-          right={<Toggle checked={s.pairingOnlyTrusted} onChange={(v) => update({ pairingOnlyTrusted: v })} label="Pairing μόνο σε έμπιστες τοποθεσίες" />}
+          title="Pair only in trusted places"
+          desc="Blocks new pairing attempts in public venues"
+          help={{ title: 'Pair Only in Trusted Places', body: 'Encryption keys are exchanged during first-time pairing. In public spaces a nearby sniffer can capture them. Enabling this restricts new pairing strictly to Home or Work.' }}
+          right={<Toggle checked={s.pairingOnlyTrusted} onChange={(v) => update({ pairingOnlyTrusted: v })} label="Pair only in trusted places" />}
         />
         <Row
           icon={Ban}
-          title="Αυτόματη απόρριψη άγνωστων αιτημάτων"
-          desc="Αιτήματα σύνδεσης/αρχείων από αγνώστους απορρίπτονται χωρίς ερώτηση"
-          help={{ title: 'Αυτόματη απόρριψη', body: 'Όταν είναι ανενεργή, η εφαρμογή σας ρωτά για κάθε αίτημα που δεν μπλοκαρίστηκε (καλή εξάσκηση!). Όταν είναι ενεργή, απορρίπτει αυτόματα κάθε αίτημα από άγνωστη συσκευή — ο κανόνας «απορρίπτετε ό,τι δεν ξεκινήσατε εσείς» εφαρμόζεται για εσάς.' }}
-          right={<Toggle checked={s.autoRejectUnknown} onChange={(v) => update({ autoRejectUnknown: v })} label="Αυτόματη απόρριψη" />}
+          title="Auto-reject unknown requests"
+          desc="Silently rejects connection/file prompts from unknown devices"
+          help={{ title: 'Auto-Reject Unknown Requests', body: 'When off, BlueShield shows interactive practice prompts for unblocked incoming requests. When on, every unsolicited prompt from an unknown device is rejected automatically.' }}
+          right={<Toggle checked={s.autoRejectUnknown} onChange={(v) => update({ autoRejectUnknown: v })} label="Auto-reject unknown requests" />}
         />
         <Row
           icon={Gauge}
-          title="Ευαισθησία λειτουργίας AUTO"
-          desc={s.sensitivity === 3 ? 'Υψηλή: μπλοκάρει ακόμη και χαμηλού κινδύνου απειλές' : s.sensitivity === 2 ? 'Μεσαία: μπλοκάρει μέτριες και σοβαρότερες απειλές' : 'Χαμηλή: μπλοκάρει μόνο σοβαρές απειλές — λιγότερες ενοχλήσεις'}
-          help={{ title: 'Ευαισθησία', body: 'Καθορίζει από ποια σοβαρότητα και πάνω οι μονάδες σε AUTO μπλοκάρουν αυτόματα μια απειλή. Όσα είναι κάτω από το όριο εμφανίζονται ως προειδοποίηση. Οι μονάδες σε ON μπλοκάρουν πάντα τα πάντα.' }}
+          title="AUTO mode sensitivity"
+          desc={s.sensitivity === 3 ? 'High: auto-blocks even low-severity anomalies' : s.sensitivity === 2 ? 'Medium: auto-blocks medium and higher threats' : 'Low: auto-blocks only high/critical threats — fewer interruptions'}
+          help={{ title: 'Sensitivity', body: 'Controls the severity threshold at which AUTO modules automatically block vs. warn. Modules set to ON always block regardless of sensitivity.' }}
         >
           <Segmented<1 | 2 | 3>
             size="sm"
             value={s.sensitivity}
             onChange={(v) => update({ sensitivity: v })}
             options={[
-              { value: 1, label: 'Χαμηλή' },
-              { value: 2, label: 'Μεσαία' },
-              { value: 3, label: 'Υψηλή' },
+              { value: 1, label: 'Low' },
+              { value: 2, label: 'Medium' },
+              { value: 3, label: 'High' },
             ]}
           />
         </Row>
       </Section>
 
-      <Section title="Ειδοποιήσεις">
+      <Section title="Notifications & Haptics">
         <Row
           icon={Bell}
-          title="Ειδοποιήσεις συστήματος"
-          desc={caps.notifications ? 'Για σοβαρές απειλές, ακόμη κι όταν η εφαρμογή είναι στο παρασκήνιο' : 'Δεν υποστηρίζονται σε αυτό το περιβάλλον'}
+          title="System notifications"
+          desc={caps.notifications ? 'Alerts for high-severity threats even in the background' : 'Not supported in this environment'}
           right={
             <Toggle
               checked={s.notifications}
@@ -246,23 +246,23 @@ export function SettingsScreen() {
                 if (v) {
                   const ok = await requestNotificationPermission();
                   if (ok) update({ notifications: true });
-                  else toast('Δεν δόθηκε άδεια για ειδοποιήσεις.', 'warning');
+                  else toast('Notification permission was not granted.', 'warning');
                 } else update({ notifications: false });
               }}
-              label="Ειδοποιήσεις"
+              label="Notifications"
             />
           }
         >
           {s.notifications && (
-            <Button size="sm" variant="secondary" onClick={() => void showNotification('🛡️ BlueShield', 'Δοκιμαστική ειδοποίηση: οι ειδοποιήσεις λειτουργούν!', true)}>
-              Δοκιμαστική ειδοποίηση
+            <Button size="sm" variant="secondary" onClick={() => void showNotification('🛡️ BlueShield', 'Test alert: system notifications are working!', true)}>
+              Send test notification
             </Button>
           )}
         </Row>
         <Row
           icon={Vibrate}
-          title="Δόνηση"
-          desc="Για απειλές, αιτήματα σύνδεσης και τον «Εντοπισμό»"
+          title="Haptic vibration"
+          desc="Used for high-risk alerts, incoming prompts, and the Tracker Locator"
           right={
             <Toggle
               checked={s.vibration}
@@ -270,19 +270,19 @@ export function SettingsScreen() {
                 update({ vibration: v });
                 if (v) vibrate([60, 40, 60]);
               }}
-              label="Δόνηση"
+              label="Vibration"
             />
           }
         />
       </Section>
 
-      <Section title="Προσομοίωση & εργαστήριο επιθέσεων">
+      <Section title="Simulation & Attack Lab">
         <Row
           icon={Sparkles}
-          title="Εκπαιδευτική προσομοίωση"
-          desc="Ρεαλιστικά σενάρια επιθέσεων για να βλέπετε πώς αντιδρά η προστασία"
-          help={{ title: 'Προσομοίωση', body: 'Επειδή οι πραγματικές επιθέσεις είναι σπάνιες, η εφαρμογή δημιουργεί ρεαλιστικά, ακίνδυνα σενάρια (με την ετικέτα ΠΡΟΣΟΜΟΙΩΣΗ), ώστε να μαθαίνετε πώς λειτουργεί κάθε προστασία και να εξασκείστε στην απόρριψη ύποπτων αιτημάτων. Αν την κλείσετε, βλέπετε μόνο πραγματικά δεδομένα.' }}
-          right={<Toggle checked={s.simulation} onChange={(v) => update({ simulation: v })} label="Προσομοίωση" />}
+          title="Educational simulation"
+          desc="Realistic attack scenarios so you can see your shields in action"
+          help={{ title: 'Educational Simulation', body: 'Because real Bluetooth attacks do not happen every minute, BlueShield generates safe, realistic scenarios (badged SIMULATION) so you can watch how each shield responds and practice rejecting malicious prompts. Toggle it off to see only real hardware data.' }}
+          right={<Toggle checked={s.simulation} onChange={(v) => update({ simulation: v })} label="Simulation" />}
         >
           {s.simulation && (
             <Segmented<1 | 2 | 3>
@@ -290,19 +290,19 @@ export function SettingsScreen() {
               value={s.intensity}
               onChange={(v) => update({ intensity: v })}
               options={[
-                { value: 1, label: 'Ήρεμο' },
-                { value: 2, label: 'Κανονικό' },
-                { value: 3, label: 'Εχθρικό' },
+                { value: 1, label: 'Calm' },
+                { value: 2, label: 'Normal' },
+                { value: 3, label: 'Hostile' },
               ]}
             />
           )}
         </Row>
         <div className="py-3">
           <div className="mb-2 flex items-center gap-2 text-[13px] font-medium text-slate-200">
-            <FlaskConical size={16} className="text-violet-300" /> Δοκιμάστε μια επίθεση
+            <FlaskConical size={16} className="text-violet-300" /> Trigger a test attack
           </div>
           <p className="mb-3 text-[12px] leading-snug text-slate-400">
-            Πατήστε μια επίθεση και δείτε αν οι τρέχουσες ρυθμίσεις σας την μπλοκάρουν. {radioOn ? '' : 'Το Bluetooth είναι κλειστό — καμία επίθεση δεν θα περάσει!'}
+            Tap any attack below to test whether your current shield settings block it. {radioOn ? '' : 'Bluetooth is currently OFF — every attack is impossible!'}
           </p>
           <div className="grid grid-cols-2 gap-2">
             {MODULES.map((m) => (
@@ -315,12 +315,12 @@ export function SettingsScreen() {
         </div>
       </Section>
 
-      <Section title="Δεδομένα">
-        <Row icon={Download} title="Αντίγραφο ασφαλείας (JSON)" desc="Ρυθμίσεις, συσκευές και αρχείο συμβάντων" right={<Button size="sm" variant="secondary" onClick={exportAll}>Εξαγωγή</Button>} />
+      <Section title="Data & Backup">
+        <Row icon={Download} title="Export backup (JSON)" desc="Settings, saved devices, and full event log" right={<Button size="sm" variant="secondary" onClick={exportAll}>Export</Button>} />
         <Row
           icon={RotateCcw}
-          title="Επαναφορά εφαρμογής"
-          desc="Επιστροφή όλων των ρυθμίσεων στις αρχικές"
+          title="Reset application"
+          desc="Restore all settings and sample data to factory defaults"
           right={
             <Button
               size="sm"
@@ -335,13 +335,13 @@ export function SettingsScreen() {
                 }
               }}
             >
-              {confirmReset ? 'Σίγουρα;' : 'Επαναφορά'}
+              {confirmReset ? 'Confirm?' : 'Reset'}
             </Button>
           }
         />
       </Section>
 
-      <Section title="Δυνατότητες αυτής της συσκευής">
+      <Section title="Device Capabilities">
         {capsList.map((c) => (
           <div key={c.label} className="flex items-center gap-3 py-2.5">
             {c.ok ? <CircleCheck size={18} className="shrink-0 text-emerald-400" /> : <CircleX size={18} className="shrink-0 text-slate-500" />}
@@ -351,16 +351,16 @@ export function SettingsScreen() {
         ))}
       </Section>
 
-      <Section title="Εγκατάσταση & σχετικά">
+      <Section title="Install & About">
         {!caps.native && (
-          <Row icon={MonitorDown} title="Εγκατάσταση στην αρχική οθόνη" desc={installable ? 'Λειτουργεί σαν κανονική εφαρμογή, και offline' : 'Chrome: μενού ⋮ → «Εγκατάσταση εφαρμογής» / «Προσθήκη στην αρχική οθόνη»'} right={installable ? <Button size="sm" onClick={() => void promptInstall()}>Εγκατάσταση</Button> : undefined} />
+          <Row icon={MonitorDown} title="Install on Home Screen" desc={installable ? 'Works like a native app, including offline' : 'Chrome: menu ⋮ → “Install app” / “Add to Home screen”'} right={installable ? <Button size="sm" onClick={() => void promptInstall()}>Install</Button> : undefined} />
         )}
-        <Row icon={Package} title="Έκδοση APK για Android" desc="Ο κώδικας περιέχει έτοιμο project Capacitor με native Bluetooth LE. Οδηγίες στο αρχείο ANDROID_APK.md." right={caps.native ? <LiveBadge label="APK" /> : undefined} />
+        <Row icon={Package} title="Android APK Build" desc="Includes a ready-to-build Capacitor 8 project with native Bluetooth LE. Step-by-step guide in ANDROID_APK.md." right={caps.native ? <LiveBadge label="APK" /> : undefined} />
         <div className="py-3">
           <div className="flex items-start gap-3">
             <IconBox icon={Info} size="sm" tone="violet" />
             <p className="flex-1 text-[12.5px] leading-relaxed text-slate-400">
-              <b className="text-slate-200">BlueShield 1.0</b> — Ειλικρινά: καμία εφαρμογή χωρίς root δεν μπορεί να μπλοκάρει πακέτα μέσα στη στοίβα Bluetooth του Android ή να κλείσει μόνη της το Bluetooth (Android 13+). Το BlueShield παρακολουθεί ό,τι επιτρέπει το σύστημα (πραγματική σάρωση, trackers, κατάσταση, μπαταρία), σας καθοδηγεί και σας εκπαιδεύει με ρεαλιστικές προσομοιώσεις.
+              <b className="text-slate-200">BlueShield 1.0</b> — Honest note: no non-root Android app can filter raw HCI packets inside the OS Bluetooth stack or silently turn Bluetooth off on Android 13+. BlueShield monitors everything the OS exposes (live BLE scanning, tracker detection, radio state, battery drain), guides you to the right settings, and trains you with realistic interactive simulations.
             </p>
           </div>
         </div>
@@ -371,7 +371,7 @@ export function SettingsScreen() {
           <span className="flex items-center gap-1"><Smartphone size={12} /> PWA</span>
         </div>
       </Section>
-      <Hint>Όλα τα δεδομένα (ρυθμίσεις, συμβάντα, τοποθεσίες) αποθηκεύονται μόνο στη συσκευή σας. Η εφαρμογή δεν στέλνει τίποτα στο διαδίκτυο.</Hint>
+      <Hint>All data (settings, event history, trusted coordinates) stays strictly on your device. BlueShield sends nothing over the internet.</Hint>
     </div>
   );
 }

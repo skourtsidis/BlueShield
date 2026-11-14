@@ -67,7 +67,7 @@ button {
   cursor: pointer;
 }
 
-/* Recharts: χωρίς περίγραμμα εστίασης */
+/* Recharts: remove focus outline */
 .recharts-wrapper,
 .recharts-surface,
 .recharts-sector,

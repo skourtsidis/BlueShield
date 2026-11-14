@@ -1,10 +1,10 @@
 import type { LocationCtx, Mode } from '../types';
 
 /**
- * Πραγματική (ενεργή) κατάσταση μιας μονάδας, λαμβάνοντας υπόψη την κεντρική προστασία:
- *  - Κεντρική OFF  → όλες οι μονάδες ανενεργές
- *  - Κεντρική AUTO → σε δημόσιους χώρους όλες ανεβαίνουν σε ON
- *  - Κεντρική ON   → κάθε μονάδα όπως την έχετε ρυθμίσει
+ * Effective state of a module, taking Master Protection into account:
+ *  - Master OFF  → all modules disabled
+ *  - Master AUTO → in public places all modules escalate to ON
+ *  - Master ON   → each module operates as individually configured
  */
 export function effectiveMode(master: Mode, mod: Mode, location: LocationCtx): Mode {
   if (master === 'off') return 'off';
@@ -13,7 +13,7 @@ export function effectiveMode(master: Mode, mod: Mode, location: LocationCtx): M
 }
 
 export const LOCATION_LABEL: Record<LocationCtx, string> = {
-  home: 'Σπίτι',
-  work: 'Εργασία',
-  public: 'Δημόσιος χώρος',
+  home: 'Home',
+  work: 'Work',
+  public: 'Public place',
 };

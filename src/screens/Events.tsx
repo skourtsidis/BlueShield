@@ -9,37 +9,37 @@ import { ActionBadge, actionLabel, BottomSheet, Button, Card, IconBox, LiveBadge
 import { EventsBar } from '../components/charts';
 
 const CONSEQUENCE: Record<ModuleId, string> = {
-  sniffing: 'υποκλοπή των δεδομένων που ανταλλάσσετε (πληκτρολογήσεις, ήχος, αρχεία)',
-  bluejacking: 'να πέσετε θύμα phishing πατώντας έναν παγιδευμένο σύνδεσμο',
-  bluesnarfing: 'κλοπή επαφών, μηνυμάτων και φωτογραφιών',
-  bluebugging: 'πλήρη έλεγχο του κινητού: κλήσεις, SMS και κρυφό άνοιγμα μικροφώνου',
-  blueborne: 'απομακρυσμένο έλεγχο του κινητού και μετάδοση σε άλλα κινητά',
-  knob: 'σπάσιμο της κρυπτογράφησης σε δευτερόλεπτα',
-  bias: 'σύνδεση μιας ψεύτικης «έμπιστης» συσκευής στο κινητό σας',
-  braktooth: 'πάγωμα του κινητού ή εκτέλεση κακόβουλου κώδικα',
-  tracking: 'καταγραφή των κινήσεών σας χωρίς να το ξέρετε',
-  dos: 'κόλλημα του κινητού και ραγδαία εξάντληση της μπαταρίας',
+  sniffing: 'interception of the data you exchange (keystrokes, audio, files)',
+  bluejacking: 'falling victim to phishing by tapping a booby-trapped link',
+  bluesnarfing: 'silent theft of your contacts, messages, and photos',
+  bluebugging: 'full covert takeover: calls, SMS, and hidden microphone activation',
+  blueborne: 'remote device takeover and worm-like spread to nearby phones',
+  knob: 'having your Bluetooth encryption cracked within seconds',
+  bias: 'a spoofed "trusted" device connecting to your phone without the link key',
+  braktooth: 'Bluetooth freezes or arbitrary code execution on unpatched chips',
+  tracking: 'having your physical movements logged without your knowledge',
+  dos: 'phone lag, crashes, and rapid battery depletion',
 };
 
 export function outcomeText(e: SecurityEvent) {
   const mod = e.moduleId ? MODULE_MAP[e.moduleId] : null;
   switch (e.action) {
     case 'blocked':
-      return mod ? `Η μονάδα «${mod.name}» απέκλεισε αυτόματα την απειλή. Δεν χρειάζεται να κάνετε κάτι.` : 'Η απειλή αποκλείστηκε αυτόματα.';
+      return mod ? `The "${mod.name}" module automatically blocked this threat. No action needed.` : 'This threat was blocked automatically.';
     case 'user-blocked':
-      return 'Απορρίψατε το αίτημα — σωστή απόφαση! Αυτό ακριβώς πρέπει να κάνετε με κάθε αίτημα που δεν ξεκινήσατε εσείς.';
+      return 'You rejected the prompt — great call! Always reject requests you did not initiate yourself.';
     case 'allowed':
       return mod
-        ? `Η απειλή ΔΕΝ αποκλείστηκε, επειδή η μονάδα «${mod.name}» ήταν ανενεργή (OFF) ή η κεντρική προστασία ήταν κλειστή. Σε πραγματική επίθεση αυτό θα μπορούσε να σημαίνει ${CONSEQUENCE[mod.id]}.`
-        : 'Το συμβάν δεν αποκλείστηκε.';
+        ? `This threat was NOT blocked because "${mod.name}" was set to OFF or Master Protection was disabled. In a real attack this could lead to ${CONSEQUENCE[mod.id]}.`
+        : 'Event was not blocked.';
     case 'user-allowed':
-      return `Αποδεχτήκατε το αίτημα. Σε πραγματική επίθεση ο επιτιθέμενος θα είχε τώρα πρόσβαση${mod ? ` — ${CONSEQUENCE[mod.id]}` : ''}. Την επόμενη φορά πατήστε «Απόρριψη».`;
+      return `You accepted the prompt. In a real attack the adversary would now have access${mod ? ` — risking ${CONSEQUENCE[mod.id]}` : ''}. Next time, tap "Reject".`;
     case 'warned':
       return mod?.id === 'tracking'
-        ? 'Η εφαρμογή σας ειδοποίησε. Ακολουθήστε τις οδηγίες παρακάτω.'
-        : `Η μονάδα «${mod?.name ?? ''}» είναι σε AUTO και έκρινε την απειλή χαμηλότερης σοβαρότητας: σας ειδοποίησε χωρίς να τη μπλοκάρει. Για να μπλοκάρεται πάντα, ρυθμίστε τη σε ON ή αυξήστε την ευαισθησία.`;
+        ? 'BlueShield alerted you. Follow the guidance below.'
+        : `"${mod?.name ?? ''}" is set to AUTO and rated this event below your auto-block sensitivity, issuing a warning instead. Switch it to ON or raise sensitivity to always block.`;
     default:
-      return 'Ενημερωτικό μήνυμα της εφαρμογής.';
+      return 'Informational BlueShield status log.';
   }
 }
 
@@ -77,7 +77,7 @@ export function EventDetailSheet({ id, onClose }: { id: string | null; onClose: 
           <div className="flex flex-wrap items-center gap-1.5">
             <ActionBadge action={e.action} />
             <SeverityBadge severity={e.severity} />
-            {e.simulated ? <SimBadge /> : <LiveBadge label="ΠΡΑΓΜΑΤΙΚΟ" />}
+            {e.simulated ? <SimBadge /> : <LiveBadge label="REAL" />}
             <span className="text-[11.5px] text-slate-500">
               {fmtDate(e.time)} · {fmtClock(e.time)}
             </span>
@@ -85,21 +85,21 @@ export function EventDetailSheet({ id, onClose }: { id: string | null; onClose: 
           <p className="text-[14px] leading-relaxed text-slate-200">{e.description}</p>
           <div className={cn('rounded-2xl border p-3.5', e.action === 'allowed' || e.action === 'user-allowed' ? 'border-rose-400/25 bg-rose-500/10' : e.action === 'warned' ? 'border-amber-400/20 bg-amber-500/10' : 'border-emerald-400/20 bg-emerald-500/10')}>
             <div className="mb-1 flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-slate-200">
-              <Bot size={14} /> Τι έκανε η εφαρμογή
+              <Bot size={14} /> What BlueShield did
             </div>
             <p className="text-[13px] leading-relaxed text-slate-200">{outcomeText(e)}</p>
           </div>
           {mod && (
             <div className="rounded-2xl bg-white/[0.04] p-3.5">
               <div className="mb-1 flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-sky-300">
-                <Brain size={14} /> Τι σημαίνει αυτό; (με απλά λόγια)
+                <Brain size={14} /> What this means (in plain English)
               </div>
               <p className="text-[13px] leading-relaxed text-slate-300">{mod.analogy}</p>
             </div>
           )}
           <div className="rounded-2xl bg-white/[0.04] p-3.5">
             <div className="mb-1 flex items-center gap-1.5 text-[12px] font-bold uppercase tracking-wide text-emerald-300">
-              <Wrench size={14} /> Τι πρέπει να κάνω;
+              <Wrench size={14} /> Recommended action
             </div>
             <p className="text-[13px] leading-relaxed text-slate-300">{e.advice}</p>
           </div>
@@ -112,7 +112,7 @@ export function EventDetailSheet({ id, onClose }: { id: string | null; onClose: 
                 go('protection');
               }}
             >
-              Ρυθμίσεις «{mod.name}» <ChevronRight size={15} />
+              Configure “{mod.name}” <ChevronRight size={15} />
             </Button>
           )}
         </div>
@@ -147,7 +147,7 @@ export function EventsScreen() {
 
   const bars = useMemo(() => {
     const now = Date.now();
-    const buckets = Array.from({ length: 15 }, (_, i) => ({ label: i === 14 ? 'τώρα' : `-${14 - i}′`, blocked: 0, warned: 0, allowed: 0 }));
+    const buckets = Array.from({ length: 15 }, (_, i) => ({ label: i === 14 ? 'now' : `-${14 - i}m`, blocked: 0, warned: 0, allowed: 0 }));
     events.forEach((e) => {
       const m = Math.floor((now - e.time) / 60000);
       if (m < 15 && e.severity !== 'info') {
@@ -180,25 +180,25 @@ export function EventsScreen() {
   const exportCsv = () => {
     const esc = (v: string) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const rows = [
-      ['Ημερομηνία', 'Ώρα', 'Μονάδα', 'Σοβαρότητα', 'Ενέργεια', 'Τίτλος', 'Συσκευή', 'Περιγραφή', 'Πηγή'].map(esc).join(','),
+      ['Date', 'Time', 'Module', 'Severity', 'Outcome', 'Title', 'Device', 'Description', 'Source'].map(esc).join(','),
       ...events.map((e) =>
-        [fmtDate(e.time), fmtClock(e.time), e.moduleId ? MODULE_MAP[e.moduleId].name : '—', SEVERITY_LABEL[e.severity], actionLabel(e.action), e.title, e.device || '', e.description, e.simulated ? 'Προσομοίωση' : 'Πραγματικό']
+        [fmtDate(e.time), fmtClock(e.time), e.moduleId ? MODULE_MAP[e.moduleId].name : '—', SEVERITY_LABEL[e.severity], actionLabel(e.action), e.title, e.device || '', e.description, e.simulated ? 'Simulation' : 'Live']
           .map(esc)
           .join(','),
       ),
     ];
-    downloadFile(`blueshield-symvanta-${new Date().toISOString().slice(0, 10)}.csv`, '\uFEFF' + rows.join('\n'), 'text/csv');
-    toast('Το αρχείο CSV δημιουργήθηκε', 'success');
+    downloadFile(`blueshield-events-${new Date().toISOString().slice(0, 10)}.csv`, '\uFEFF' + rows.join('\n'), 'text/csv');
+    toast('CSV log exported', 'success');
   };
 
   return (
     <div className="space-y-4 px-4 pb-8 pt-4">
       <div className="grid grid-cols-4 gap-2">
         {[
-          { l: 'Σύνολο', v: counts.total, c: 'text-white', I: ListFilter },
-          { l: 'Αποκλ.', v: counts.blocked, c: 'text-emerald-300', I: ShieldCheck },
-          { l: 'Προειδ.', v: counts.warned, c: 'text-amber-300', I: TriangleAlert },
-          { l: 'Πέρασαν', v: counts.allowed, c: 'text-rose-300', I: OctagonAlert },
+          { l: 'Total', v: counts.total, c: 'text-white', I: ListFilter },
+          { l: 'Blocked', v: counts.blocked, c: 'text-emerald-300', I: ShieldCheck },
+          { l: 'Warned', v: counts.warned, c: 'text-amber-300', I: TriangleAlert },
+          { l: 'Passed', v: counts.allowed, c: 'text-rose-300', I: OctagonAlert },
         ].map((x) => (
           <div key={x.l} className="rounded-2xl border border-white/[0.07] bg-surface/80 p-2.5 text-center">
             <x.I size={15} className={cn('mx-auto', x.c)} />
@@ -212,14 +212,14 @@ export function EventsScreen() {
         <Card className="flex items-center gap-3 py-3">
           <IconBox icon={Trophy} tone="amber" />
           <div className="flex-1 text-[13px] text-slate-300">
-            Σωστές αποφάσεις σε αιτήματα σύνδεσης: <b className="text-white">{stats.correct}</b> από <b className="text-white">{stats.correct + stats.wrong}</b>
+            Correct decisions on incoming prompts: <b className="text-white">{stats.correct}</b> of <b className="text-white">{stats.correct + stats.wrong}</b>
           </div>
           <span className="text-lg font-bold text-amber-300">{Math.round((stats.correct / (stats.correct + stats.wrong)) * 100)}%</span>
         </Card>
       )}
 
       <Card>
-        <SectionTitle icon={ChartColumn} title="Συμβάντα ανά λεπτό" subtitle="Τελευταία 15 λεπτά" help={{ title: 'Συμβάντα ανά λεπτό', body: 'Κάθε στήλη είναι ένα λεπτό. Πράσινο = απειλές που μπλοκαρίστηκαν, κίτρινο = προειδοποιήσεις, κόκκινο = απειλές που ΔΕΝ μπλοκαρίστηκαν (π.χ. επειδή μια μονάδα ήταν OFF). Αγγίξτε μια στήλη για λεπτομέρειες.' }} />
+        <SectionTitle icon={ChartColumn} title="Events per minute" subtitle="Last 15 minutes" help={{ title: 'Events per minute', body: 'Each bar represents one minute. Green = blocked threats, yellow = warnings, red = threats that were NOT blocked (for example, because a module was turned OFF). Tap any bar to inspect values.' }} />
         <EventsBar data={bars} />
       </Card>
 
@@ -229,11 +229,11 @@ export function EventsScreen() {
           value={sev}
           onChange={setSev}
           options={[
-            { value: 'all', label: 'Όλα' },
-            { value: 'critical', label: 'Κρίσιμα' },
-            { value: 'high', label: 'Υψηλά' },
-            { value: 'medium', label: 'Μέτρια' },
-            { value: 'low', label: 'Χαμηλά' },
+            { value: 'all', label: 'All' },
+            { value: 'critical', label: 'Critical' },
+            { value: 'high', label: 'High' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'low', label: 'Low' },
           ]}
         />
         <Segmented<ActFilter>
@@ -241,17 +241,17 @@ export function EventsScreen() {
           value={act}
           onChange={setAct}
           options={[
-            { value: 'all', label: 'Κάθε ενέργεια' },
-            { value: 'blocked', label: 'Αποκλείστηκαν' },
-            { value: 'warned', label: 'Προειδοπ.' },
-            { value: 'allowed', label: 'Πέρασαν' },
+            { value: 'all', label: 'All actions' },
+            { value: 'blocked', label: 'Blocked' },
+            { value: 'warned', label: 'Warned' },
+            { value: 'allowed', label: 'Passed' },
           ]}
         />
       </div>
 
       <Card className="py-1">
         {filtered.length === 0 ? (
-          <p className="py-8 text-center text-[13px] text-slate-400">Κανένα συμβάν με αυτά τα φίλτρα.</p>
+          <p className="py-8 text-center text-[13px] text-slate-400">No events match these filters.</p>
         ) : (
           <div className="divide-y divide-white/[0.06]">
             {filtered.slice(0, limit).map((e) => (
@@ -261,14 +261,14 @@ export function EventsScreen() {
         )}
         {filtered.length > limit && (
           <button type="button" onClick={() => setLimit((l) => l + 30)} className="w-full py-3 text-sm font-semibold text-sky-300">
-            Εμφάνιση περισσότερων ({filtered.length - limit})
+            Show more ({filtered.length - limit})
           </button>
         )}
       </Card>
 
       <div className="grid grid-cols-2 gap-2">
         <Button variant="secondary" icon={Download} onClick={exportCsv} disabled={!events.length}>
-          Εξαγωγή CSV
+          Export CSV
         </Button>
         <Button
           variant="danger"
@@ -284,7 +284,7 @@ export function EventsScreen() {
             }
           }}
         >
-          {confirmClear ? 'Πατήστε ξανά' : 'Διαγραφή'}
+          {confirmClear ? 'Tap again to confirm' : 'Clear log'}
         </Button>
       </div>
       <EventDetailSheet id={open} onClose={() => setOpen(null)} />
