@@ -111,7 +111,7 @@ export function Onboarding() {
                 'Real BLE device scanning and tracker detection (AirTag, SmartTag, Tile) — in the Android APK.',
                 'Real Bluetooth state, bonded devices, Android OS version, and battery monitoring.',
                 'Live BLE GATT privacy-leak inspection (Chrome with Web Bluetooth).',
-                'Interactive attack simulations so you can watch how each shield responds in real time.',
+                'Live checks of your real Bluetooth state, nearby devices and security patch level, explained in plain English.',
               ].map((t) => (
                 <li key={t} className="flex gap-2.5 text-[13.5px] leading-snug text-slate-200">
                   <CircleCheck size={18} className="mt-0.5 shrink-0 text-emerald-400" />

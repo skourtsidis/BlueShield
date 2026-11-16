@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">BlueShield</string>
+    <string name="title_activity_main">BlueShield</string>
+    <string name="package_name">gr.blueshield.app</string>
+    <string name="custom_url_scheme">gr.blueshield.app</string>
+</resources>

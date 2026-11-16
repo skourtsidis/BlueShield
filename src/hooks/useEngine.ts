@@ -2,16 +2,30 @@ import { useEffect } from 'react';
 import { App as CapApp } from '@capacitor/app';
 import { useStore } from '../store/useStore';
 import { getSystemInfo, haversine, startBattery } from '../platform/system';
-import { nativeBonded, nativeInit } from '../platform/ble';
+import { nativeInit } from '../platform/ble';
 import type { Screen } from '../types';
 
-/** Boots the live engine: 1-second tick, battery API, OS info, native Bluetooth, GPS geofencing, Android back button. */
+/**
+ * Boots the live engine: 1-second tick, native Bluetooth polling (2 s), connected and bonded
+ * devices (5 s), root check, device details, battery, OS info, GPS places and the Android back button.
+ */
 export function useEngine() {
   useEffect(() => {
     const st = useStore.getState();
-    const iv = window.setInterval(() => useStore.getState().tick(), 1000);
+    const tickIv = window.setInterval(() => useStore.getState().tick(), 1000);
+    const nativeIv = window.setInterval(() => void useStore.getState().refreshNative(), 2000);
+    const slowIv = window.setInterval(() => {
+      void useStore.getState().refreshConnected();
+      void useStore.getState().refreshBonded();
+    }, 5000);
     let disposed = false;
     let stopBattery: (() => void) | null = null;
+
+    void st.checkRoot();
+    void st.loadDeviceDetails();
+    void st.refreshNative();
+    void st.refreshConnected();
+    void st.refreshBonded();
 
     getSystemInfo()
       .then((i) => useStore.getState().setSysInfo(i))
@@ -20,12 +34,14 @@ export function useEngine() {
       if (disposed) stop?.();
       else stopBattery = stop;
     });
+
+    if (st.caps.native) {
+      void nativeInit((en) => useStore.getState().setLive({ btEnabled: en }));
+    }
+
     let backHandle: { remove: () => Promise<void> } | null = null;
     if (st.caps.native) {
-      nativeInit((en) => useStore.getState().setLive({ btEnabled: en })).then(async (ok) => {
-        if (ok) useStore.getState().setLive({ bonded: await nativeBonded() });
-      });
-      // Android hardware back button: closes modals/sheets → returns Home → exits app
+      // Android back button: closes overlays first, then returns Home, then exits the app
       CapApp.addListener('backButton', () => {
         const s = useStore.getState();
         if (s.pendingRequest) return;
@@ -61,7 +77,9 @@ export function useEngine() {
 
     return () => {
       disposed = true;
-      window.clearInterval(iv);
+      window.clearInterval(tickIv);
+      window.clearInterval(nativeIv);
+      window.clearInterval(slowIv);
       stopBattery?.();
       void backHandle?.remove();
       window.removeEventListener('popstate', onPop);
