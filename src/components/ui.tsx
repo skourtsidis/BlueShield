@@ -81,7 +81,7 @@ const PALETTES = {
 } as const;
 
 export function ModeSwitch({
-  value, onChange, palette = 'protect', size = 'md', disabled, className, labels,
+  value, onChange, palette = 'protect', size = 'md', disabled, className, labels, disabledModes,
 }: {
   value: Mode;
   onChange: (m: Mode) => void;
@@ -90,6 +90,8 @@ export function ModeSwitch({
   disabled?: boolean;
   className?: string;
   labels?: Partial<Record<Mode, string>>;
+  /** Modes that are greyed out and cannot be selected (e.g. OFF/AUTO without root). */
+  disabledModes?: Mode[];
 }) {
   const order: Mode[] = ['off', 'auto', 'on'];
   const idx = order.indexOf(value);
@@ -113,8 +115,9 @@ export function ModeSwitch({
             type="button"
             role="radio"
             aria-checked={value === m}
+            disabled={disabledModes?.includes(m)}
             onClick={() => onChange(m)}
-            className={cn('relative z-10 flex items-center justify-center gap-1 font-extrabold tracking-wider transition-colors', value === m ? P.text[m] : 'text-slate-400 hover:text-slate-200')}
+            className={cn('relative z-10 flex items-center justify-center gap-1 font-extrabold tracking-wider transition-colors disabled:cursor-not-allowed disabled:opacity-40', value === m ? P.text[m] : 'text-slate-400 hover:text-slate-200')}
           >
             {size !== 'sm' && <I size={size === 'lg' ? 15 : 13} strokeWidth={2.6} />}
             {labels?.[m] ?? m.toUpperCase()}

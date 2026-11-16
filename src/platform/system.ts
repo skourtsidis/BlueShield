@@ -154,7 +154,7 @@ export async function showNotification(title: string, body: string, force = fals
     const now = Date.now();
     if (!force && now - lastNotify < 30000) return;
     lastNotify = now;
-    const opts: any = { body, icon: 'icons/icon-192.png', badge: 'icons/icon-192.png', tag: 'blueshield', vibrate: [120, 60, 120] };
+    const opts: any = { body, icon: 'icons/icon-source.png', badge: 'icons/icon-source.png', tag: 'blueshield', vibrate: [120, 60, 120] };
     const reg = await navigator.serviceWorker?.getRegistration?.();
     if (reg) {
       await reg.showNotification(title, opts);

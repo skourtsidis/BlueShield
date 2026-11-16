@@ -48,7 +48,7 @@ function DesktopPanel() {
       </ul>
       <div className="mt-6 flex items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-[12.5px] text-slate-400">
         <Smartphone size={16} className="shrink-0 text-sky-300" />
-        The phone preview next to this panel is fully interactive — try the ON / OFF / AUTO switches!
+        Real Bluetooth data is read inside the Android app. In a browser, controls that need root access stay greyed out.
       </div>
     </aside>
   );

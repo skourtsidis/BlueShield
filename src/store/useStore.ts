@@ -1,25 +1,20 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
 import type {
-  BatteryState, Capabilities, EventAction, HelpContent, IncomingRequest, LiveState, LocationCtx, Mode, ModuleId,
-  NearbyDevice, PairedDevice, Permissions, Screen, SecurityEvent, Settings, SystemInfo, TimelinePoint, Toast, TrustedPlace,
+  BatteryState, Capabilities, DeviceDetails, DeviceType, EventAction, HelpContent, IncomingRequest, KeyClass, LiveState,
+  LocationCtx, Mode, ModuleId, NearbyDevice, PairedDevice, PairingRecord, RootInfo, Screen, SecurityEvent, Settings,
+  SystemInfo, TimelinePoint, Toast, TrustedPlace,
 } from '../types';
 import { DEFAULT_MODULES, MODULE_MAP, RECOMMENDED_MODULES, SEVERITY_RANK } from '../data/modules';
-import { chance, clamp, daysSince, hashAngle, inTimeWindow, rand, randInt, randomMac, uid, weightedPick } from '../lib/utils';
+import { daysSince, hashAngle, inTimeWindow, uid } from '../lib/utils';
 import { effectiveMode, LOCATION_LABEL } from '../lib/mode';
-import { FOLLOW_TRACKER, generateAttack, initialNearby, initialPaired, randomExtra, spawnDevice, type AttackSpec } from './sim';
+import { moduleStatus, type CheckInput } from '../lib/checks';
 import { detectCapabilities, showNotification, vibrate } from '../platform/system';
 import {
-  classifyAdvert, drainLiveBuffer, nativeOpenSettings, nativeRequestEnable, nativeStartScan, nativeStopScan, webStartScan, webStopScan,
-  type LiveAdvert,
+  classifyAdvert, drainAdvertCount, drainLiveBuffer, nativeStartScan, nativeStopScan, webStartScan, webStopScan, type LiveAdvert,
 } from '../platform/ble';
+import { isNativeApp, keyClassOf, native, type PermissionState } from '../platform/native';
 
-export interface KeyRecord {
-  t: number;
-  bytes: number;
-  device: string;
-  accepted: boolean;
-}
 export interface Flood {
   until: number;
   pps: number;
@@ -42,8 +37,6 @@ export const DEFAULT_SETTINGS: Settings = {
   sensitivity: 2,
   notifications: false,
   vibration: true,
-  simulation: true,
-  intensity: 2,
   dosThreshold: 300,
   minKeyBytes: 16,
   staleDays: 90,
@@ -55,13 +48,19 @@ export interface State {
   onboarded: boolean;
   master: Mode;
   radioMode: Mode;
+  /** true only when Android reports the Bluetooth adapter as ON. */
   radioOn: boolean;
+  /** Time of the last radio on/off attempt (rate limit for automatic actions). */
+  radioAttemptAt: number;
+  /** Discoverable state reported by Android (scan mode). */
   discoverable: boolean;
   discoverableUntil: number | null;
+  /** Bluetooth name reported by Android. Empty until read. */
   deviceName: string;
   modules: Record<ModuleId, Mode>;
   settings: Settings;
   paired: PairedDevice[];
+  connectedIds: string[];
   blocked: { mac: string; name: string; at: number }[];
   trustedMacs: string[];
   events: SecurityEvent[];
@@ -71,7 +70,8 @@ export interface State {
   trustedPlaces: TrustedPlace[];
   radarMode: Mode;
   quizBest: number | null;
-  keyHistory: KeyRecord[];
+  pairings: PairingRecord[] | null;
+  pairingsError: string | null;
   readEventsAt: number;
 
   nearby: NearbyDevice[];
@@ -85,18 +85,20 @@ export interface State {
   live: LiveState;
   battery: BatteryState;
   sysInfo: SystemInfo | null;
+  device: DeviceDetails | null;
+  permissions: PermissionState | null;
+  root: RootInfo;
   caps: Capabilities;
   flood: Flood | null;
   lastEventAt: number;
   tickCount: number;
-  macRotations: number;
-  autoOffNotified: boolean;
 
   go: (s: Screen) => void;
   completeOnboarding: (beginner: boolean) => void;
   setMaster: (m: Mode) => void;
   setRadioMode: (m: Mode) => void;
   wakeRadio: () => void;
+  setRadioPower: (on: boolean, reason: string) => Promise<void>;
   setModule: (id: ModuleId, m: Mode) => void;
   setAllModules: (m: Mode | 'recommended') => void;
   setDiscoverable: (on: boolean) => void;
@@ -107,8 +109,7 @@ export interface State {
   removeTrustedPlace: (id: string) => void;
   togglePairedConnection: (id: string) => void;
   removePaired: (id: string) => void;
-  removeStale: () => number;
-  setPermission: (id: string, key: keyof Permissions, v: boolean) => void;
+  removeStale: () => Promise<number>;
   pairNew: (nearbyId: string) => boolean;
   blockDevice: (mac: string, name: string) => void;
   unblockDevice: (mac: string) => void;
@@ -126,30 +127,136 @@ export interface State {
   markEventsRead: () => void;
   clearEvents: () => void;
   resetAll: () => void;
-  simulateAttack: (id: ModuleId) => void;
+  runCheck: (id: ModuleId) => void;
   setRadarMode: (m: Mode) => void;
   startLive: () => Promise<void>;
   stopLive: () => Promise<void>;
   setLive: (p: Partial<LiveState>) => void;
   setBatteryLive: (level: number, charging: boolean) => void;
   setSysInfo: (i: SystemInfo) => void;
+  checkRoot: () => Promise<void>;
+  loadDeviceDetails: () => Promise<void>;
+  requestPermissions: () => Promise<PermissionState | null>;
+  refreshNative: () => Promise<void>;
+  refreshConnected: () => Promise<void>;
+  refreshBonded: () => Promise<void>;
+  requestPairings: () => Promise<void>;
   tick: () => void;
 }
 
 const alertedTrackers = new Set<string>();
+const alertedSpoof = new Set<string>();
+/** Radar AUTO duty cycle state: true while the native scan is running. */
+let dutyOn = true;
+
+function errorText(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  if (e && typeof e === 'object' && 'message' in e) return String((e as { message: unknown }).message);
+  return String(e);
+}
+
+function secureOf(k: KeyClass): PairedDevice['secure'] {
+  if (k.startsWith('sc')) return 'sc';
+  if (k === 'unknown') return 'unknown';
+  return 'legacy';
+}
+
+/** Best-effort device type from the Bluetooth major class (reported by Android) and the name. */
+function typeFromClass(major: string, name: string): DeviceType {
+  const n = name.toLowerCase();
+  if (/car|bmw|audi|toyota|volkswagen|vw|skoda|ford|kia|hyundai|mercedes|renault|peugeot|opel|nissan/.test(n)) return 'car';
+  switch (major) {
+    case 'audio':
+      if (/speaker|boom|flip|charge|soundbar|jbl|soundlink/.test(n)) return 'speaker';
+      if (/tv|bravia|chromecast/.test(n)) return 'tv';
+      return 'headphones';
+    case 'phone':
+      return 'phone';
+    case 'computer':
+      return 'laptop';
+    case 'wearable':
+      return 'watch';
+    case 'peripheral':
+      return 'keyboard';
+    case 'health':
+      return 'fitness';
+    default:
+      return 'unknown';
+  }
+}
+
+function macTypeOf(id: string): NearbyDevice['macType'] {
+  const m = id.match(/^([0-9A-Fa-f]{2}):/);
+  if (!m) return 'random';
+  const b = parseInt(m[1], 16);
+  if ((b & 0xc0) === 0x40) return 'rpa';
+  if ((b & 0xc0) === 0xc0) return 'random';
+  return 'public';
+}
+
+/** Merges a real BLE scan snapshot into the nearby list. Entries are dropped after 30 s without a sighting. */
+function ingestLive(nearby: NearbyDevice[], adverts: LiveAdvert[], now: number): NearbyDevice[] {
+  const map = new Map(nearby.map((d) => [d.id, d] as const));
+  for (const a of adverts) {
+    const ex = map.get(a.id);
+    if (ex) {
+      map.set(a.id, { ...ex, name: a.name ?? ex.name, rssi: a.rssi, rssiHistory: [...ex.rssiHistory, a.rssi].slice(-40), lastSeen: now });
+    } else {
+      const c = classifyAdvert(a);
+      const looksMac = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(a.id);
+      map.set(a.id, {
+        id: a.id,
+        name: a.name,
+        type: c.type,
+        mac: looksMac ? a.id.toUpperCase() : '— (masked by Android)',
+        macType: macTypeOf(a.id),
+        protocol: 'ble',
+        manufacturer: c.manufacturer,
+        rssi: a.rssi,
+        rssiBase: a.rssi,
+        rssiHistory: [a.rssi],
+        txPower: a.txPower,
+        firstSeen: now,
+        lastSeen: now,
+        risk: c.risk,
+        reason: c.reason,
+        tags: c.tags,
+        encrypted: null,
+        source: 'live',
+        services: c.services,
+        angle: hashAngle(a.id),
+        label: c.label,
+      });
+    }
+  }
+  return Array.from(map.values()).filter((d) => now - d.lastSeen < 30000);
+}
+
+function checkInput(s: State): CheckInput {
+  return {
+    radioKnown: s.caps.native,
+    radioOn: s.live.btEnabled === true,
+    discoverable: s.discoverable,
+    root: s.root.granted,
+    device: s.device,
+    paired: s.paired,
+    pairings: s.pairings,
+    nearby: s.nearby,
+    scanning: s.live.scanning,
+    packetsPerSec: s.timeline.length ? s.timeline[s.timeline.length - 1].packets : 0,
+    dosThreshold: s.settings.dosThreshold,
+  };
+}
 
 function persistedDefaults(now: number) {
   return {
     onboarded: false,
     master: 'on' as Mode,
     radioMode: 'on' as Mode,
-    radioOn: true,
-    discoverable: false,
-    discoverableUntil: null as number | null,
-    deviceName: "George's Galaxy S23",
+    deviceName: '',
     modules: { ...DEFAULT_MODULES },
     settings: { ...DEFAULT_SETTINGS },
-    paired: initialPaired(now),
+    paired: [] as PairedDevice[],
     blocked: [] as { mac: string; name: string; at: number }[],
     trustedMacs: [] as string[],
     events: [] as SecurityEvent[],
@@ -162,97 +269,8 @@ function persistedDefaults(now: number) {
     ] as TrustedPlace[],
     radarMode: 'on' as Mode,
     quizBest: null as number | null,
-    keyHistory: [] as KeyRecord[],
     readEventsAt: now,
   };
-}
-
-interface AttackOutcome {
-  event?: EventInput;
-  request?: IncomingRequest;
-  flood?: Flood;
-  key?: KeyRecord;
-  spawnTracker?: boolean;
-  blockedPkts: number;
-}
-
-function resolveAttack(s: State, spec: AttackSpec, now: number): AttackOutcome {
-  const eff = effectiveMode(s.master, s.modules[spec.moduleId], s.location);
-  const rank = SEVERITY_RANK[spec.severity];
-  const thr = s.settings.sensitivity === 3 ? 1 : s.settings.sensitivity === 2 ? 2 : 3;
-  let action: EventAction;
-  if (spec.moduleId === 'tracking') action = eff === 'off' ? 'allowed' : eff === 'auto' && rank < thr ? 'info' : 'warned';
-  else if (spec.flood) {
-    const r = spec.flood.pps / s.settings.dosThreshold;
-    action = eff === 'on' ? (r >= 1 ? 'blocked' : 'info') : eff === 'auto' ? (r >= 1.5 ? 'blocked' : 'warned') : 'allowed';
-  } else if (spec.keyBytes) {
-    const k = spec.keyBytes;
-    const min = s.settings.minKeyBytes;
-    action = eff === 'on' ? (k >= min ? 'info' : 'blocked') : eff === 'auto' ? (k < 7 ? 'blocked' : k < min ? 'warned' : 'info') : 'allowed';
-  } else action = eff === 'on' ? 'blocked' : eff === 'auto' ? (rank >= thr ? 'blocked' : 'warned') : 'allowed';
-
-  const out: AttackOutcome = { blockedPkts: 0 };
-  let description = spec.description;
-  // In AUTO mode, ambiguous requests occasionally prompt the user for hands-on decision practice
-  if (spec.request && eff === 'auto' && action === 'blocked' && chance(0.5)) action = 'warned';
-  if (spec.request && action !== 'blocked') {
-    if (s.settings.autoRejectUnknown) {
-      action = 'blocked';
-      description += ' Automatically rejected by your "Auto-reject unknown requests" setting.';
-    } else if (!s.pendingRequest) {
-      out.request = {
-        id: uid(),
-        kind: spec.request.kind,
-        deviceName: spec.device,
-        mac: spec.mac,
-        detail: spec.request.detail,
-        pin: spec.request.kind === 'pair' ? String(randInt(100000, 999999)) : undefined,
-        moduleId: spec.moduleId,
-        severity: spec.severity,
-        explanation: spec.request.explanation,
-        createdAt: now,
-        title: spec.title,
-        description: spec.description,
-        advice: spec.advice,
-      };
-      return out;
-    } else action = 'warned';
-  }
-  out.event = { moduleId: spec.moduleId, severity: spec.severity, title: spec.title, description, advice: spec.advice, device: spec.device, action };
-  if (spec.flood) out.flood = { until: now + spec.flood.seconds * 1000, pps: spec.flood.pps, source: spec.device, blocked: action === 'blocked' };
-  if (spec.keyBytes) out.key = { t: now, bytes: spec.keyBytes, device: spec.device, accepted: action !== 'blocked' };
-  if (spec.trackerFollow) out.spawnTracker = true;
-  out.blockedPkts = action === 'blocked' ? randInt(4, 30) : 0;
-  return out;
-}
-
-function macTypeOf(id: string): NearbyDevice['macType'] {
-  const m = id.match(/^([0-9A-Fa-f]{2}):/);
-  if (!m) return 'random';
-  const b = parseInt(m[1], 16);
-  if ((b & 0xc0) === 0x40) return 'rpa';
-  if ((b & 0xc0) === 0xc0) return 'random';
-  return 'public';
-}
-
-function ingestLive(nearby: NearbyDevice[], adverts: LiveAdvert[], now: number): NearbyDevice[] {
-  const map = new Map(nearby.filter((d) => d.source === 'live').map((d) => [d.id, d] as const));
-  for (const a of adverts) {
-    const ex = map.get(a.id);
-    if (ex) {
-      map.set(a.id, { ...ex, name: a.name ?? ex.name, rssi: a.rssi, rssiHistory: [...ex.rssiHistory, a.rssi].slice(-40), lastSeen: now });
-    } else {
-      const c = classifyAdvert(a);
-      const looksMac = /^([0-9A-F]{2}:){5}[0-9A-F]{2}$/i.test(a.id);
-      map.set(a.id, {
-        id: a.id, name: a.name, type: c.type, mac: looksMac ? a.id.toUpperCase() : '— (masked by browser)', macType: macTypeOf(a.id),
-        protocol: 'ble', manufacturer: c.manufacturer, rssi: a.rssi, rssiBase: a.rssi, rssiHistory: [a.rssi], txPower: a.txPower,
-        firstSeen: now, lastSeen: now, risk: c.risk, reason: c.reason, tags: c.tags, encrypted: null, source: 'live',
-        services: c.services, angle: hashAngle(a.id), label: c.label,
-      });
-    }
-  }
-  return Array.from(map.values()).filter((d) => now - d.lastSeen < 30000);
 }
 
 export const useStore = create<State>()(
@@ -260,6 +278,13 @@ export const useStore = create<State>()(
     (set, get) => ({
       screen: 'home',
       ...persistedDefaults(Date.now()),
+      radioOn: false,
+      radioAttemptAt: 0,
+      discoverable: false,
+      discoverableUntil: null,
+      connectedIds: [],
+      pairings: null,
+      pairingsError: null,
       nearby: [],
       timeline: [],
       lastActivity: Date.now(),
@@ -269,14 +294,15 @@ export const useStore = create<State>()(
       sheet: null,
       selectedDevice: null,
       live: { btEnabled: null, scanning: false, error: null, bonded: [] },
-      battery: { source: 'sim', level: 82, charging: false, history: [] },
+      battery: { source: 'none', level: 0, charging: false, history: [] },
       sysInfo: null,
+      device: null,
+      permissions: null,
+      root: { checked: false, granted: false, suBinary: false, testKeys: false, message: 'Root status not checked yet.', checkedAt: null },
       caps: detectCapabilities(),
       flood: null,
       lastEventAt: 0,
       tickCount: 0,
-      macRotations: 0,
-      autoOffNotified: false,
 
       go: (screen) => {
         if (screen === get().screen) return;
@@ -285,44 +311,81 @@ export const useStore = create<State>()(
         } catch {
           /* ignore */
         }
-        set({ screen, ...(screen === 'events' ? { readEventsAt: Date.now() } : {}) });
+        set({ screen, lastActivity: Date.now(), ...(screen === 'events' ? { readEventsAt: Date.now() } : {}) });
       },
 
       completeOnboarding: (beginner) => set((s) => ({ onboarded: true, settings: { ...s.settings, beginnerMode: beginner } })),
 
       setMaster: (m) => {
         set({ master: m });
-        const t = { on: 'Master protection is ACTIVE', off: 'Master protection DISABLED', auto: 'Smart protection (AUTO) active' }[m];
+        const t = { on: 'Master protection is ACTIVE', off: 'Master protection is OFF: no module can alert or act', auto: 'Smart protection (AUTO) active' }[m];
         get().toast(t, m === 'off' ? 'warning' : 'success');
       },
 
       setRadioMode: (m) => {
         const s = get();
-        const now = Date.now();
-        if (s.live.btEnabled !== null) {
-          if (m === 'on' && !s.live.btEnabled) void nativeRequestEnable();
-          if (m === 'off' && s.live.btEnabled) {
-            void nativeOpenSettings();
-            get().toast('Android 13+ prevents apps from disabling Bluetooth directly. Please toggle it off in the Settings screen that just opened.', 'info');
-          }
-          set({ radioMode: m, lastActivity: now, autoOffNotified: false });
+        if (!isNativeApp()) {
+          get().toast('Bluetooth controls work only in the BlueShield Android app.', 'warning');
           return;
         }
-        set({ radioMode: m, radioOn: m !== 'off', lastActivity: now, autoOffNotified: false });
+        if (m !== 'on' && !s.root.granted) {
+          get().toast('Turning Bluetooth off or using AUTO requires root access. These options are greyed out on your device.', 'warning');
+          return;
+        }
+        set({ radioMode: m, lastActivity: Date.now() });
         get().toast(
-          m === 'off' ? 'Bluetooth OFF — maximum safety' : m === 'on' ? 'Bluetooth always ON' : `Bluetooth AUTO — turns off after ${s.settings.autoOffMinutes}m idle`,
+          m === 'off'
+            ? 'OFF: BlueShield keeps Bluetooth turned off'
+            : m === 'on'
+              ? 'ON: Bluetooth stays on'
+              : `AUTO: Bluetooth turns off after ${s.settings.autoOffMinutes} minutes without a connected device`,
           m === 'on' ? 'info' : 'success',
         );
+        if (m === 'on' && s.live.btEnabled === false) void get().wakeRadio();
+        if (m === 'off' && s.live.btEnabled === true) void get().setRadioPower(false, 'OFF mode');
       },
 
       wakeRadio: () => {
-        const s = get();
-        if (s.live.btEnabled !== null) {
-          void nativeRequestEnable();
+        if (!isNativeApp()) {
+          get().toast('Bluetooth controls work only in the BlueShield Android app.', 'warning');
           return;
         }
-        set({ radioOn: true, lastActivity: Date.now() });
-        get().toast('Bluetooth temporarily enabled (AUTO)', 'info');
+        set({ lastActivity: Date.now() });
+        void get().setRadioPower(true, 'manual request');
+      },
+
+      setRadioPower: async (on, reason) => {
+        const s = get();
+        if (s.live.btEnabled !== null && on === s.live.btEnabled) return;
+        set({ radioAttemptAt: Date.now() });
+        if (!isNativeApp()) {
+          get().toast('Bluetooth controls work only in the BlueShield Android app.', 'warning');
+          return;
+        }
+        try {
+          if (on) {
+            if (s.root.granted) {
+              const r = await native.setRadio({ enabled: true });
+              if (!r.ok) get().toast(r.message, 'warning');
+            } else {
+              await native.requestEnable();
+            }
+          } else {
+            const r = await native.setRadio({ enabled: false });
+            get().addEvent({
+              moduleId: null,
+              severity: 'info',
+              action: 'info',
+              title: r.ok ? 'Bluetooth turned OFF' : 'Bluetooth could not be turned off',
+              description: r.ok ? `Turned off with root access (${reason}).` : r.message,
+              advice: 'Wake Bluetooth from the Home screen when you need it again.',
+            });
+            if (!r.ok) get().toast(r.message, 'danger');
+          }
+        } catch (e) {
+          get().toast(errorText(e), 'danger');
+        }
+        await get().refreshNative();
       },
 
       setModule: (id, m) => set((s) => ({ modules: { ...s.modules, [id]: m } })),
@@ -330,22 +393,58 @@ export const useStore = create<State>()(
       setAllModules: (m) => {
         const modules = m === 'recommended' ? { ...RECOMMENDED_MODULES } : (Object.fromEntries(Object.keys(DEFAULT_MODULES).map((k) => [k, m])) as Record<ModuleId, Mode>);
         set({ modules });
-        get().toast(m === 'recommended' ? 'Applied recommended protection preset' : `All modules set to ${m.toUpperCase()}`, m === 'off' ? 'warning' : 'success');
+        get().toast(m === 'recommended' ? 'Applied the recommended protection preset' : `All modules set to ${m.toUpperCase()}`, m === 'off' ? 'warning' : 'success');
       },
 
       setDiscoverable: (on) => {
         const s = get();
-        if (on && !s.radioOn) {
-          get().toast('Enable Bluetooth first', 'warning');
+        if (!isNativeApp()) {
+          get().toast('Discoverable mode can be changed only in the BlueShield Android app.', 'warning');
           return;
         }
-        set({ discoverable: on, discoverableUntil: on ? Date.now() + s.settings.discoverableTimeout * 1000 : null });
-        if (on) get().toast(`Discoverable for ${s.settings.discoverableTimeout}s — turns off automatically`, 'info');
+        if (on) {
+          if (s.live.btEnabled !== true) {
+            get().toast('Turn Bluetooth ON first.', 'warning');
+            return;
+          }
+          native
+            .requestDiscoverable({ seconds: s.settings.discoverableTimeout })
+            .then(() => set({ discoverableUntil: Date.now() + s.settings.discoverableTimeout * 1000, lastActivity: Date.now() }))
+            .catch((e: unknown) => get().toast(errorText(e), 'danger'));
+          get().toast('Confirm the Android dialog to make your phone visible for a limited time.', 'info');
+          return;
+        }
+        if (s.root.granted && s.discoverable) {
+          get().toast('Root: restarting Bluetooth to end discoverable mode.', 'info');
+          void (async () => {
+            await native.setRadio({ enabled: false });
+            await native.setRadio({ enabled: true });
+            await get().refreshNative();
+          })();
+          return;
+        }
+        native.openBluetoothSettings().catch(() => undefined);
+        get().toast('Android does not let apps hide your phone. Turn visibility off in the Bluetooth settings that just opened.', 'info');
       },
 
       setDeviceName: (n) => {
-        set({ deviceName: n.trim() || get().deviceName });
-        get().toast('Device name updated', 'success');
+        const name = n.trim();
+        if (!name) return;
+        if (!isNativeApp()) {
+          get().toast('Renaming the phone works only in the BlueShield Android app.', 'warning');
+          return;
+        }
+        native
+          .setDeviceName({ name })
+          .then((r) => {
+            if (r.ok) {
+              set({ deviceName: r.name || name });
+              get().toast('Bluetooth name updated', 'success');
+            } else {
+              get().toast('Android did not accept the new name', 'warning');
+            }
+          })
+          .catch((e: unknown) => get().toast(errorText(e), 'danger'));
       },
 
       updateSettings: (p) => set((s) => ({ settings: { ...s.settings, ...p } })),
@@ -354,17 +453,10 @@ export const useStore = create<State>()(
         const s = get();
         if (l === s.location) return;
         const leaving = s.location !== 'public' && l === 'public';
-        const patch: Partial<State> = { location: l, nearby: s.live.scanning ? s.nearby : [] };
-        if (leaving && s.radioMode === 'auto' && s.settings.offWhenLeaving && s.radioOn && s.live.btEnabled === null) {
-          patch.radioOn = false;
-          set(patch);
-          get().addEvent({
-            moduleId: null, severity: 'info', action: 'info', simulated: true,
-            title: 'Bluetooth turned off automatically',
-            description: `You left a trusted place (${LOCATION_LABEL[s.location]}). AUTO mode turned Bluetooth off to keep you safe.`,
-            advice: 'You can wake it temporarily anytime from the Home screen.',
-          });
-        } else set(patch);
+        set({ location: l, nearby: s.live.scanning ? s.nearby : [] });
+        if (leaving && s.radioMode === 'auto' && s.settings.offWhenLeaving && s.root.granted && s.live.btEnabled === true) {
+          void get().setRadioPower(false, 'left a trusted place');
+        }
         get().toast(`Location: ${LOCATION_LABEL[l]}${reason ? ` (${reason})` : ''}`, l === 'public' ? 'warning' : 'info');
       },
 
@@ -372,100 +464,99 @@ export const useStore = create<State>()(
       removeTrustedPlace: (id) => set((s) => ({ trustedPlaces: s.trustedPlaces.filter((x) => x.id !== id) })),
 
       togglePairedConnection: (id) => {
-        const s = get();
-        const d = s.paired.find((p) => p.id === id);
+        const d = get().paired.find((p) => p.id === id);
         if (!d) return;
-        const now = Date.now();
-        if (!d.connected && !s.radioOn) {
-          if (s.radioMode === 'off' || s.live.btEnabled !== null) {
-            get().toast('Bluetooth is off. Turn it on first.', 'warning');
-            return;
-          }
-          set({ radioOn: true });
-        }
-        set({ paired: s.paired.map((p) => (p.id === id ? { ...p, connected: !p.connected, lastUsed: now } : p)), lastActivity: now });
-        get().toast(d.connected ? `Disconnected: ${d.name}` : `Connected: ${d.name}`, 'info');
+        get().toast(`Connect or disconnect "${d.name}" from the Android Bluetooth settings.`, 'info');
+        if (isNativeApp()) native.openBluetoothSettings().catch(() => undefined);
       },
 
       removePaired: (id) => {
         const d = get().paired.find((p) => p.id === id);
-        set((s) => ({ paired: s.paired.filter((p) => p.id !== id) }));
-        if (d) get().toast(`Removed: ${d.name}`, 'success');
+        if (!d) return;
+        if (!isNativeApp()) {
+          get().toast('Forgetting a pairing works only in the BlueShield Android app.', 'warning');
+          return;
+        }
+        native
+          .removeBond({ address: id })
+          .then(async (r) => {
+            get().toast(r.ok ? `Forgot "${d.name}"` : `Android did not remove "${d.name}"`, r.ok ? 'success' : 'warning');
+            await get().refreshBonded();
+          })
+          .catch((e: unknown) => get().toast(errorText(e), 'danger'));
       },
 
-      removeStale: () => {
+      removeStale: async () => {
         const s = get();
-        const stale = s.paired.filter((p) => daysSince(p.lastUsed) > s.settings.staleDays);
-        if (!stale.length) return 0;
-        set({ paired: s.paired.filter((p) => daysSince(p.lastUsed) <= s.settings.staleDays) });
+        const stale = s.paired.filter((p) => !p.connected && p.lastUsed > 0 && daysSince(p.lastUsed) > s.settings.staleDays);
+        if (!stale.length) {
+          get().toast('No stale devices found', 'info');
+          return 0;
+        }
+        if (!isNativeApp()) {
+          get().toast('Removing pairings works only in the BlueShield Android app.', 'warning');
+          return 0;
+        }
+        let removed = 0;
+        for (const p of stale) {
+          try {
+            const r = await native.removeBond({ address: p.id });
+            if (r.ok) removed += 1;
+          } catch {
+            /* continue with the next device */
+          }
+        }
+        await get().refreshBonded();
         get().addEvent({
-          moduleId: 'bias', severity: 'info', action: 'info', simulated: true,
-          title: `Removed ${stale.length} stale device${stale.length === 1 ? '' : 's'}`,
-          description: `Deleted: ${stale.map((p) => p.name).join(', ')}. Fewer saved "trusted" identities reduces your BIAS impersonation risk.`,
+          moduleId: 'bias',
+          severity: 'info',
+          action: 'info',
+          title: `Removed ${removed} stale pairing${removed === 1 ? '' : 's'}`,
+          description: `Forgotten: ${stale.map((p) => p.name).join(', ')}. Fewer saved identities lowers the risk of BIAS-style impersonation.`,
           advice: 'Repeat this cleanup every few months.',
         });
-        get().toast(`Removed ${stale.length} stale device${stale.length === 1 ? '' : 's'}`, 'success');
-        return stale.length;
+        get().toast(`Removed ${removed} stale device${removed === 1 ? '' : 's'}`, 'success');
+        return removed;
       },
 
-      setPermission: (id, key, v) => set((s) => ({ paired: s.paired.map((p) => (p.id === id ? { ...p, permissions: { ...p.permissions, [key]: v } } : p)) })),
-
       pairNew: (nearbyId) => {
-        const s = get();
-        const d = s.nearby.find((x) => x.id === nearbyId);
+        const d = get().nearby.find((x) => x.id === nearbyId);
         if (!d) return false;
-        const name = d.name || d.label || 'New device';
-        const now = Date.now();
-        if (!s.radioOn) {
-          get().toast('Bluetooth is turned off', 'warning');
+        if (!isNativeApp()) {
+          get().toast('Pairing works only in the BlueShield Android app (through Android settings).', 'warning');
           return false;
         }
-        const sniff = effectiveMode(s.master, s.modules.sniffing, s.location);
-        if (s.location === 'public' && (s.settings.pairingOnlyTrusted || sniff !== 'off')) {
-          get().addEvent({
-            moduleId: 'sniffing', severity: 'medium', action: 'blocked', simulated: true, device: name,
-            title: 'Blocked pairing in a public place',
-            description: `Pairing with "${name}" was blocked because you are in a public place where an attacker could sniff the exchanged encryption keys.`,
-            advice: 'Pair new accessories when you are in a trusted place (such as Home).',
-          });
-          get().toast('Pairing blocked: you are in a public place', 'warning');
-          return false;
-        }
-        if (s.location === 'public')
-          get().addEvent({
-            moduleId: 'sniffing', severity: 'medium', action: 'allowed', simulated: true, device: name,
-            title: 'Unprotected pairing in a public place',
-            description: `Paired with "${name}" in a public venue. Encryption keys were exchanged where a nearby sniffer could capture them.`,
-            advice: 'Pair at home next time, and enable "Pair only in trusted places".',
-          });
-        const dev: PairedDevice = {
-          id: uid(), name, type: d.type, mac: d.mac.startsWith('—') ? randomMac('public') : d.mac, pairedAt: now, lastUsed: now, connected: true,
-          secure: 'sc', encrypted: d.encrypted !== false, keyBytes: 16, trusted: true,
-          permissions: { contacts: false, messages: false, calls: d.type === 'headphones' || d.type === 'car', files: false },
-        };
-        set({ paired: [dev, ...s.paired], lastActivity: now });
-        get().addEvent({
-          moduleId: null, severity: 'info', action: 'info', simulated: true, device: name,
-          title: 'New secure pairing completed',
-          description: `"${name}" paired using LE Secure Connections with a 16-byte key.`,
-          advice: 'Review its data permissions in the "Devices" tab.',
-        });
-        get().toast(`Paired with "${name}"`, 'success');
+        native.openBluetoothSettings().catch(() => undefined);
+        get().toast('Pairing happens in Android Bluetooth settings. Pair at home, not in public places.', 'info');
         return true;
       },
 
       blockDevice: (mac, name) => {
         set((s) => ({ blocked: [{ mac, name, at: Date.now() }, ...s.blocked.filter((b) => b.mac !== mac)], trustedMacs: s.trustedMacs.filter((m) => m !== mac) }));
-        get().toast(`Blocked: ${name}`, 'success');
+        get().toast(`"${name}" added to your local block list (Android itself is not changed)`, 'info');
       },
       unblockDevice: (mac) => set((s) => ({ blocked: s.blocked.filter((b) => b.mac !== mac) })),
       trustDevice: (mac) => {
-        set((s) => ({ trustedMacs: s.trustedMacs.includes(mac) ? s.trustedMacs.filter((m) => m !== mac) : [...s.trustedMacs, mac], blocked: s.blocked.filter((b) => b.mac !== mac) }));
+        set((s) => ({
+          trustedMacs: s.trustedMacs.includes(mac) ? s.trustedMacs.filter((m) => m !== mac) : [...s.trustedMacs, mac],
+          blocked: s.blocked.filter((b) => b.mac !== mac),
+        }));
       },
 
       addEvent: (e) => {
         const now = Date.now();
-        const ev: SecurityEvent = { id: uid(), time: now, simulated: true, ...e };
+        const ev: SecurityEvent = {
+          id: uid(),
+          time: now,
+          simulated: false,
+          moduleId: e.moduleId,
+          severity: e.severity,
+          title: e.title,
+          description: e.description,
+          advice: e.advice,
+          device: e.device,
+          action: e.action,
+        };
         set((s) => ({
           events: [ev, ...s.events].slice(0, 300),
           lastEventAt: e.severity === 'info' ? s.lastEventAt : now,
@@ -478,10 +569,9 @@ export const useStore = create<State>()(
         }));
         const s = get();
         const rank = SEVERITY_RANK[e.severity];
-        if (s.settings.vibration && rank >= 3 && e.action !== 'info') vibrate(e.action === 'allowed' ? [200, 80, 200, 80, 200] : [90, 50, 90]);
+        if (s.settings.vibration && rank >= 3 && e.action !== 'info') vibrate(e.action === 'allowed' ? [200, 80, 200] : [90, 50, 90]);
         if (s.settings.notifications && rank >= 3 && e.action !== 'info') {
-          const pre = e.action === 'blocked' ? '🛡️ Blocked: ' : '⚠️ ';
-          void showNotification(pre + e.title, e.description.slice(0, 140));
+          void showNotification(`${e.action === 'blocked' ? 'Blocked: ' : 'Warning: '}${e.title}`, e.description.slice(0, 140));
         }
       },
 
@@ -493,18 +583,14 @@ export const useStore = create<State>()(
           stats: { ...s.stats, correct: s.stats.correct + (accept ? 0 : 1), wrong: s.stats.wrong + (accept ? 1 : 0) },
         }));
         get().addEvent({
-          moduleId: r.moduleId, severity: r.severity, title: r.title, device: r.deviceName, advice: r.advice,
-          description: r.description + (accept ? ' User ACCEPTED the request.' : timedOut ? ' Request timed out without an answer.' : ' User rejected the request.'),
+          moduleId: r.moduleId,
+          severity: r.severity,
+          title: r.title,
+          device: r.deviceName,
+          advice: r.advice,
+          description: r.description + (accept ? ' You accepted the request.' : timedOut ? ' The request timed out.' : ' You rejected the request.'),
           action: accept ? 'user-allowed' : 'user-blocked',
         });
-        get().toast(
-          accept
-            ? 'You accepted a request from an unknown device! In a real attack it would now have access to your phone.'
-            : timedOut
-              ? 'Request timed out and was automatically rejected.'
-              : 'Nice! You rejected a suspicious Bluetooth request. 👏',
-          accept ? 'danger' : 'success',
-        );
       },
 
       toast: (text, tone = 'info') => {
@@ -531,285 +617,383 @@ export const useStore = create<State>()(
       },
       resetAll: () => {
         const now = Date.now();
-        set({ ...persistedDefaults(now), onboarded: true, nearby: [], timeline: [], pendingRequest: null, flood: null, screen: 'home', sheet: null });
-        get().toast('All settings restored to defaults', 'info');
+        set({
+          ...persistedDefaults(now),
+          onboarded: true,
+          nearby: [],
+          timeline: [],
+          pendingRequest: null,
+          flood: null,
+          screen: 'home',
+          sheet: null,
+          connectedIds: [],
+          pairings: null,
+          pairingsError: null,
+        });
+        get().toast('All BlueShield settings restored to defaults', 'info');
       },
 
-      simulateAttack: (id) => {
+      runCheck: (id) => {
         const s = get();
-        const now = Date.now();
-        if (!s.radioOn) {
-          get().addEvent({
-            moduleId: id, severity: 'info', action: 'info', simulated: true,
-            title: `${MODULE_MAP[id].attack} test: impossible`,
-            description: 'Bluetooth is turned off, so no Bluetooth attack can reach your phone. This is the single most effective defense!',
-            advice: 'Keep Bluetooth off (or set to AUTO) whenever you do not need it.',
-          });
-          get().toast('Bluetooth is off → attack cannot reach you 🛡️', 'success');
-          return;
-        }
-        const spec = generateAttack(id, { paired: s.paired, nearby: s.nearby, discoverable: s.discoverable, dosThreshold: s.settings.dosThreshold, location: s.location });
-        const out = resolveAttack({ ...s, pendingRequest: null }, spec, now);
-        const patch: Partial<State> = {};
-        if (out.request) patch.pendingRequest = out.request;
-        if (out.flood) patch.flood = out.flood;
-        if (out.key) patch.keyHistory = [...s.keyHistory, out.key].slice(-30);
-        if (out.spawnTracker && !s.nearby.some((d) => d.follow) && !s.live.scanning) patch.nearby = [...s.nearby, spawnDevice(FOLLOW_TRACKER, now)];
-        set(patch);
-        if (out.event) {
-          get().addEvent({ ...out.event, simulated: true });
-          const a = out.event.action;
-          get().toast(
-            a === 'blocked' ? '🛡️ Simulated attack was blocked' : a === 'allowed' ? '⚠️ Attack was NOT blocked — module is OFF' : a === 'warned' ? 'Attack detected (warning issued)' : 'Connection met security requirements',
-            a === 'blocked' ? 'success' : a === 'allowed' ? 'danger' : 'warning',
-          );
-        }
+        const mod = MODULE_MAP[id];
+        const status = moduleStatus(id, checkInput(s));
+        const mode = effectiveMode(s.master, s.modules[id], s.location);
+        const action: EventAction = status.exposed === true ? (mode === 'off' ? 'allowed' : 'warned') : 'info';
+        get().addEvent({
+          moduleId: id,
+          severity: status.severity,
+          action,
+          title: `${mod.attack}: ${status.headline}`,
+          description: status.detail,
+          advice: mod.tips[0] ?? mod.threat,
+        });
+        get().toast(
+          status.exposed === null
+            ? `${mod.attack}: not enough data yet`
+            : status.exposed
+              ? `${mod.attack}: exposure found`
+              : `${mod.attack}: no exposure found`,
+          status.exposed === true ? 'warning' : status.exposed === false ? 'success' : 'info',
+        );
       },
 
-      setRadarMode: (m) => set({ radarMode: m }),
+      setRadarMode: (m) => {
+        set({ radarMode: m });
+        get().toast(
+          m === 'auto'
+            ? 'Radar AUTO: scans in 12-second bursts every 30 seconds to save battery'
+            : m === 'on'
+              ? 'Radar ON: continuous scanning while a live scan is running'
+              : 'Radar OFF: scanning paused',
+          'info',
+        );
+      },
 
       startLive: async () => {
         const s = get();
         try {
-          if (s.caps.native) await nativeStartScan();
-          else if (s.caps.leScan) await webStartScan();
-          else throw new Error('Live BLE scanning requires the Android APK or Chrome on Android with experimental Web Platform features enabled.');
+          if (s.caps.native) {
+            const perm = await native.requestPermissions();
+            set({ permissions: perm });
+            const granted = perm.needsLocation ? perm.location : perm.scan;
+            if (!granted) {
+              throw new Error(
+                perm.needsLocation
+                  ? 'Location permission is needed to scan on Android 11 and older.'
+                  : 'The "Nearby devices" permission is needed to scan.',
+              );
+            }
+            if (get().live.btEnabled !== true) throw new Error('Turn Bluetooth ON to scan nearby devices.');
+            await nativeStartScan();
+          } else if (s.caps.leScan) {
+            await webStartScan();
+          } else {
+            throw new Error('Live BLE scanning works only in the BlueShield Android app.');
+          }
           drainLiveBuffer();
+          drainAdvertCount();
+          dutyOn = true;
           set({ live: { ...get().live, scanning: true, error: null }, nearby: [] });
-          get().toast('Live BLE scanning started', 'success');
+          get().toast('Live BLE scan started', 'success');
         } catch (e) {
-          const msg = e instanceof Error ? e.message : String(e);
+          const msg = errorText(e);
           set({ live: { ...get().live, scanning: false, error: msg } });
           get().toast(msg, 'warning');
         }
       },
+
       stopLive: async () => {
         const s = get();
         if (s.caps.native) await nativeStopScan();
         else webStopScan();
+        dutyOn = true;
         set({ live: { ...get().live, scanning: false }, nearby: [] });
       },
+
       setLive: (p) => set((s) => ({ live: { ...s.live, ...p } })),
+
       setBatteryLive: (level, charging) =>
         set((s) => ({
           battery: {
             source: 'live',
             level,
             charging,
-            history: s.battery.source === 'live' ? [...s.battery.history, { t: Date.now(), level }].slice(-240) : [{ t: Date.now(), level }],
+            history: [...(s.battery.source === 'live' ? s.battery.history : []), { t: Date.now(), level }].slice(-240),
           },
         })),
+
       setSysInfo: (i) => set({ sysInfo: i }),
 
+      checkRoot: async () => {
+        if (!isNativeApp()) {
+          set({
+            root: { checked: true, granted: false, suBinary: false, testKeys: false, message: 'Root detection runs only inside the BlueShield Android app.', checkedAt: Date.now() },
+          });
+          return;
+        }
+        try {
+          const r = await native.getRootStatus();
+          set((s) => ({
+            root: { checked: true, granted: r.granted, suBinary: r.suBinary, testKeys: r.testKeys, message: r.message, checkedAt: Date.now() },
+            // Without root, OFF and AUTO are unavailable: fall back to ON so the UI never shows a locked mode as active.
+            radioMode: r.granted || s.radioMode === 'on' ? s.radioMode : 'on',
+          }));
+        } catch (e) {
+          set({ root: { checked: true, granted: false, suBinary: false, testKeys: false, message: errorText(e), checkedAt: Date.now() } });
+        }
+      },
+
+      loadDeviceDetails: async () => {
+        if (!isNativeApp()) return;
+        try {
+          const d = await native.getDeviceInfo();
+          set({
+            device: {
+              manufacturer: d.manufacturer,
+              brand: d.brand,
+              model: d.model,
+              androidVersion: d.androidVersion,
+              sdkInt: d.sdkInt,
+              securityPatch: d.securityPatch,
+            },
+          });
+        } catch {
+          /* leave unknown */
+        }
+      },
+
+      requestPermissions: async () => {
+        if (!isNativeApp()) return null;
+        try {
+          const p = await native.requestPermissions();
+          set({ permissions: p });
+          return p;
+        } catch (e) {
+          get().toast(errorText(e), 'warning');
+          return null;
+        }
+      },
+
+      refreshNative: async () => {
+        if (!isNativeApp()) return;
+        try {
+          const bt = await native.getBluetoothState();
+          set((s) => ({
+            radioOn: bt.enabled,
+            discoverable: bt.discoverable,
+            deviceName: bt.name || s.deviceName,
+            live: { ...s.live, btEnabled: bt.enabled, error: bt.hasBluetooth ? null : 'This device has no Bluetooth adapter.' },
+          }));
+        } catch (e) {
+          set((s) => ({ live: { ...s.live, error: errorText(e) } }));
+        }
+      },
+
+      refreshConnected: async () => {
+        if (!isNativeApp() || !get().radioOn) {
+          if (get().connectedIds.length) set({ connectedIds: [] });
+          return;
+        }
+        try {
+          const r = await native.getConnectedDevices();
+          set({ connectedIds: r.addresses });
+        } catch {
+          /* keep the previous snapshot */
+        }
+      },
+
+      refreshBonded: async () => {
+        if (!isNativeApp() || !get().radioOn) return;
+        try {
+          const r = await native.getBondedDevices();
+          const now = Date.now();
+          const prev = get().paired;
+          const records = get().pairings ?? [];
+          const paired: PairedDevice[] = r.devices.map((d) => {
+            const old = prev.find((p) => p.id === d.address);
+            const keyClass = records.find((x) => x.address === d.address)?.keyClass ?? old?.keyClass ?? 'unknown';
+            return {
+              id: d.address,
+              name: d.name || 'Unnamed device',
+              type: typeFromClass(d.majorClass, d.name),
+              mac: d.address,
+              transport: d.transport,
+              majorClass: d.majorClass,
+              pairedAt: old?.pairedAt ?? 0,
+              lastUsed: old?.lastUsed || now,
+              connected: old?.connected ?? false,
+              secure: secureOf(keyClass),
+              keyClass,
+              trusted: old?.trusted ?? true,
+              note: old?.note,
+            };
+          });
+          set({ paired, live: { ...get().live, bonded: paired.map((p) => ({ id: p.id, name: p.name })) } });
+        } catch (e) {
+          set((s) => ({ live: { ...s.live, error: errorText(e) } }));
+        }
+      },
+
+      requestPairings: async () => {
+        if (!isNativeApp()) {
+          get().toast('Pairing analysis works only in the BlueShield Android app.', 'warning');
+          return;
+        }
+        if (!get().root.granted) {
+          get().toast('Root access is required to read pairing keys. This option is greyed out on your device.', 'warning');
+          return;
+        }
+        try {
+          const r = await native.analyzePairings();
+          if (!r.available) {
+            set({ pairings: null, pairingsError: r.reason ?? 'Pairing data is unavailable.' });
+            get().toast(r.reason ?? 'Pairing data is unavailable.', 'warning');
+            return;
+          }
+          const records: PairingRecord[] = r.devices.map((d) => ({
+            address: d.address,
+            name: d.name,
+            linkKeyType: d.linkKeyType,
+            le: d.le,
+            keyClass: keyClassOf(d.linkKeyType),
+          }));
+          set((s) => ({
+            pairings: records,
+            pairingsError: null,
+            paired: s.paired.map((p) => {
+              const rec = records.find((x) => x.address === p.id);
+              return rec ? { ...p, keyClass: rec.keyClass, secure: secureOf(rec.keyClass) } : p;
+            }),
+          }));
+          get().toast(`Analyzed ${records.length} stored pairing${records.length === 1 ? '' : 's'}`, 'success');
+        } catch (e) {
+          set({ pairingsError: errorText(e) });
+          get().toast(errorText(e), 'danger');
+        }
+      },
+
+      /** Runs once per second: real BLE traffic, real alerts, and root-only automatic actions. */
       tick: () => {
         const s = get();
         const now = Date.now();
         const tickCount = s.tickCount + 1;
         const events: EventInput[] = [];
-        let { radioOn, discoverable, discoverableUntil, paired, nearby, flood, lastActivity, battery, macRotations, keyHistory, autoOffNotified } = s;
-        let pendingRequest = s.pendingRequest;
-        const sim = s.settings.simulation;
-        const nativeBt = s.live.btEnabled;
-        const anyConnected = paired.some((p) => p.connected);
-        if (anyConnected) lastActivity = now;
+        const btOn = s.live.btEnabled === true;
+        const root = s.root.granted;
+        const packets = drainAdvertCount();
+        const drained = drainLiveBuffer();
+        const nearby = s.live.scanning ? ingestLive(s.nearby, drained, now) : s.nearby.length ? [] : s.nearby;
 
-        // 1) Bluetooth radio (ON / OFF / AUTO)
-        if (nativeBt !== null) {
-          radioOn = nativeBt;
-          if (s.radioMode === 'auto' && radioOn && !anyConnected && now - lastActivity > s.settings.autoOffMinutes * 60000 && !autoOffNotified) {
-            autoOffNotified = true;
-            events.push({
-              moduleId: null, severity: 'medium', action: 'warned', simulated: false,
-              title: 'Recommended: turn Bluetooth off',
-              description: `Bluetooth has been idle for ${s.settings.autoOffMinutes} minutes. Android 13+ prevents apps from switching it off automatically.`,
-              advice: 'Turn it off from Quick Settings, or tap OFF on the Home screen to jump straight to Bluetooth settings.',
-            });
-          }
-          if (anyConnected) autoOffNotified = false;
-        } else if (s.radioMode === 'off') radioOn = false;
-        else if (s.radioMode === 'on') radioOn = true;
-        else if (radioOn) {
-          if (s.settings.nightEnabled && inTimeWindow(s.settings.nightFrom, s.settings.nightTo)) {
-            radioOn = false;
-            events.push({
-              moduleId: null, severity: 'info', action: 'info',
-              title: 'Night schedule: Bluetooth OFF',
-              description: `Bluetooth turned off automatically for your quiet hours (${s.settings.nightFrom}–${s.settings.nightTo}).`,
-              advice: 'You can adjust night hours in Settings → Automations.',
-            });
-          } else if (!anyConnected && now - lastActivity > s.settings.autoOffMinutes * 60000) {
-            radioOn = false;
-            events.push({
-              moduleId: null, severity: 'info', action: 'info',
-              title: 'Idle auto-shutoff: Bluetooth OFF',
-              description: `No device was connected for ${s.settings.autoOffMinutes} minutes. AUTO mode turned Bluetooth off.`,
-              advice: 'It will wake again whenever you connect a device or tap "Enable now".',
-            });
+        const anyConnected = s.connectedIds.length > 0;
+        const lastActivity = anyConnected ? now : s.lastActivity;
+        const paired = s.paired.map((p) => {
+          const conn = s.connectedIds.includes(p.id);
+          if (conn) return p.connected && now - p.lastUsed < 60000 ? p : { ...p, connected: true, lastUsed: now };
+          return p.connected ? { ...p, connected: false } : p;
+        });
+
+        // Root-only radio automation (OFF enforcement, AUTO idle timeout, night schedule)
+        let radioAction: { enable: boolean; reason: string } | null = null;
+        if (btOn && root && now - s.radioAttemptAt > 15000) {
+          if (s.radioMode === 'off') {
+            radioAction = { enable: false, reason: 'OFF mode' };
+          } else if (s.radioMode === 'auto') {
+            if (s.settings.nightEnabled && inTimeWindow(s.settings.nightFrom, s.settings.nightTo)) {
+              radioAction = { enable: false, reason: 'night schedule' };
+            } else if (!anyConnected && !s.discoverable && now - lastActivity > s.settings.autoOffMinutes * 60000) {
+              radioAction = { enable: false, reason: `idle for ${s.settings.autoOffMinutes} minutes` };
+            }
           }
         }
-        if (!radioOn) {
-          if (paired.some((p) => p.connected)) paired = paired.map((p) => (p.connected ? { ...p, connected: false } : p));
-          discoverable = false;
-          discoverableUntil = null;
-          flood = null;
-          if (pendingRequest) pendingRequest = null;
-        }
 
-        // 2) Discoverable timeout
-        if (discoverable && discoverableUntil && now > discoverableUntil) {
-          discoverable = false;
-          discoverableUntil = null;
+        // DoS: real advertisement rate from the BLE scan
+        let flood = s.flood && now < s.flood.until ? s.flood : null;
+        if (s.live.scanning && packets > s.settings.dosThreshold && !flood) {
+          const eff = effectiveMode(s.master, s.modules.dos, s.location);
+          const block = eff === 'on' && root && btOn;
+          flood = { until: now + 20000, pps: packets, source: 'nearby advertisements', blocked: block };
+          if (block && !radioAction) radioAction = { enable: false, reason: 'advertisement flood' };
           events.push({
-            moduleId: null, severity: 'info', action: 'info',
-            title: 'Discoverable mode turned off automatically',
-            description: 'Your phone is hidden from nearby Bluetooth scans again.',
-            advice: 'Only enable discoverability briefly while pairing a new accessory.',
+            moduleId: 'dos',
+            severity: 'high',
+            action: eff === 'off' ? 'allowed' : block ? 'blocked' : 'warned',
+            title: 'Bluetooth advertisement flood',
+            description: `${packets} Bluetooth advertisements arrived in one second (your threshold: ${s.settings.dosThreshold}). Traffic like this is typical of denial-of-service and battery-drain attacks.`,
+            advice: 'Turn Bluetooth off until the traffic drops. With root access, DoS protection set to ON turns it off automatically.',
           });
         }
-        if (radioOn && anyConnected && tickCount % 10 === 0) paired = paired.map((p) => (p.connected ? { ...p, lastUsed: now } : p));
 
-        // 3) Nearby devices
-        const drained = drainLiveBuffer();
-        if (s.live.scanning) nearby = ingestLive(nearby, drained, now);
-        else if (!radioOn || !sim) nearby = nearby.length ? [] : nearby;
-        else {
-          if (nearby.length === 0) nearby = initialNearby(s.location, now);
-          const scanActive = s.radarMode === 'on' || (s.radarMode === 'auto' && Math.floor(now / 1000) % 30 < 12);
-          if (scanActive) {
-            nearby = nearby.map((d) => {
-              const target = d.follow ? -55 : d.rssiBase;
-              const r = clamp(d.rssi + rand(-2.6, 2.6) + (target - d.rssi) * 0.12, -100, -30);
-              return { ...d, rssi: r, rssiHistory: [...d.rssiHistory, Math.round(r)].slice(-40), lastSeen: now };
+        // BIAS-style impersonation: a nearby device copies the name of a paired device that is out of range
+        if (s.live.scanning && tickCount % 5 === 0) {
+          const eff = effectiveMode(s.master, s.modules.bias, s.location);
+          for (const d of nearby) {
+            const dn = d.name;
+            if (!dn || alertedSpoof.has(d.id)) continue;
+            const match = paired.find(
+              (p) => p.id !== d.id && p.name !== 'Unnamed device' && p.name.toLowerCase() === dn.toLowerCase() && !nearby.some((x) => x.id === p.id),
+            );
+            if (!match) continue;
+            alertedSpoof.add(d.id);
+            events.push({
+              moduleId: 'bias',
+              severity: 'high',
+              action: eff === 'off' ? 'allowed' : 'warned',
+              device: dn,
+              title: 'Possible impersonation of a paired device',
+              description: `A nearby device "${dn}" (${d.id}) uses the name of your paired device "${match.name}" (${match.id}), which is out of range. BIAS-style attacks copy names and addresses.`,
+              advice: 'Do not accept requests from this device. Forget duplicates you do not recognize in Devices.',
             });
-            if (chance(s.location === 'public' ? 0.06 : 0.012)) {
-              const removable = nearby.filter((d) => !d.follow && d.type === 'phone' && !d.name);
-              if (removable.length > 2) {
-                const rm = removable[randInt(0, removable.length - 1)];
-                nearby = nearby.filter((d) => d.id !== rm.id);
-              }
-              if (nearby.length < (s.location === 'public' ? 18 : 8)) nearby = [...nearby, randomExtra(s.location, now)];
-            }
-            if (chance(0.015)) {
-              const rpas = nearby.filter((d) => d.macType === 'rpa');
-              if (rpas.length) {
-                const target = rpas[randInt(0, rpas.length - 1)];
-                nearby = nearby.map((d) => (d.id === target.id ? { ...d, mac: randomMac('rpa') } : d));
-                macRotations += 1;
-              }
-            }
+            if (eff === 'on' && root && btOn && !radioAction) radioAction = { enable: false, reason: 'possible impersonation' };
           }
         }
 
-        // 4) Simulated attacks
-        let blockedPkts = 0;
-        let threats = 0;
-        if (sim && radioOn && s.onboarded && now - s.lastEventAt > 7000) {
-          const ctxF = s.location === 'public' ? 3 : s.location === 'work' ? 1.3 : 0.6;
-          const intF = [0, 0.45, 1, 2.2][s.settings.intensity];
-          const boost = tickCount < 180 ? 2.5 : 1;
-          if (chance(0.016 * ctxF * intF * boost)) {
-            const type = weightedPick<ModuleId>({
-              sniffing: 1.4, bluejacking: discoverable ? 3 : 0.8, bluesnarfing: 1.6, bluebugging: 0.9, blueborne: 0.7, knob: 1.2,
-              bias: paired.length ? 1.1 : 0.3, braktooth: 0.7, tracking: s.location === 'public' ? 2.6 : 0.6, dos: flood ? 0 : 1,
-            });
-            if (type) {
-              const spec = generateAttack(type, { paired, nearby, discoverable, dosThreshold: s.settings.dosThreshold, location: s.location });
-              const out = resolveAttack({ ...s, pendingRequest }, spec, now);
-              threats = 1;
-              blockedPkts += out.blockedPkts;
-              if (out.request) pendingRequest = out.request;
-              if (out.event) events.push({ ...out.event, simulated: true });
-              if (out.flood) flood = out.flood;
-              if (out.key) keyHistory = [...keyHistory, out.key].slice(-30);
-              if (out.spawnTracker && !nearby.some((d) => d.follow) && !s.live.scanning) nearby = [...nearby, spawnDevice(FOLLOW_TRACKER, now)];
-            }
-          }
-        }
-        if (radioOn && anyConnected && chance(0.03)) {
-          const strong = paired.filter((p) => p.connected && p.keyBytes >= 16);
-          if (strong.length) {
-            const p = strong[randInt(0, strong.length - 1)];
-            keyHistory = [...keyHistory, { t: now, bytes: p.keyBytes, device: p.name, accepted: true }].slice(-30);
-          }
-        }
-
-        // 5) Real trackers (live scan)
+        // Trackers that stay near you
         if (s.live.scanning) {
           for (const d of nearby) {
             if (d.tags.includes('tracker') && now - d.firstSeen > 10 * 60000 && !alertedTrackers.has(d.id)) {
               alertedTrackers.add(d.id);
               const eff = effectiveMode(s.master, s.modules.tracking, s.location);
+              const label = d.label || d.name || 'Tracker';
               events.push({
-                moduleId: 'tracking', severity: 'high', action: eff === 'off' ? 'allowed' : 'warned', simulated: false, device: d.label || d.name || 'Tracker',
+                moduleId: 'tracking',
+                severity: 'high',
+                action: eff === 'off' ? 'allowed' : 'warned',
+                device: label,
                 title: 'Tracker near you for over 10 minutes',
-                description: `"${d.label || d.name}" has been continuously detected near you for ${Math.round((now - d.firstSeen) / 60000)} minutes.`,
-                advice: 'Use "Locate" on the Radar screen. If it does not belong to you or someone traveling with you, check your belongings.',
+                description: `"${label}" has been detected near you for ${Math.round((now - d.firstSeen) / 60000)} minutes.`,
+                advice: 'Use Radar → Locate. If it does not belong to you or someone travelling with you, check your belongings.',
               });
             }
           }
         }
 
-        // 6) Live packet timeline
-        if (flood && now >= flood.until) flood = null;
-        let packets = 0;
-        let blocked = blockedPkts;
-        if (radioOn) {
-          const connected = paired.filter((p) => p.connected);
-          const audio = connected.some((p) => p.type === 'headphones' || p.type === 'speaker' || p.type === 'car');
-          packets = connected.length * rand(6, 14) + (audio ? rand(28, 42) : 0) + rand(2, 8) + nearby.length * 0.4;
-          if (flood) {
-            const fp = flood.pps * rand(0.85, 1.1);
-            packets += fp;
-            if (flood.blocked) blocked += fp * rand(0.93, 0.99);
+        // Radar AUTO duty cycle: 12 s of scanning every 30 s
+        if (s.live.scanning && s.caps.native) {
+          const wantScan = s.radarMode !== 'auto' || Math.floor(now / 1000) % 30 < 12;
+          if (wantScan !== dutyOn) {
+            dutyOn = wantScan;
+            void (wantScan ? nativeStartScan() : nativeStopScan());
           }
         }
-        let prevTimeline = s.timeline;
-        if (prevTimeline.length === 0) {
-          const connected = paired.filter((p) => p.connected).length;
-          prevTimeline = Array.from({ length: 60 }, (_, i) => ({
-            t: now - (60 - i) * 1000,
-            packets: radioOn ? Math.round(connected * rand(6, 14) + (connected ? rand(28, 42) : 0) + rand(2, 8)) : 0,
-            blocked: 0,
-            threats: 0,
-          }));
-        }
-        const timeline = [...prevTimeline, { t: now, packets: Math.round(packets), blocked: Math.round(blocked), threats }].slice(-90);
 
-        // 7) Battery
-        if (battery.source === 'sim') {
-          let lvl = battery.level;
-          let charging = battery.charging;
-          const drain = 0.0025 + (radioOn ? 0.0008 : 0) + (flood ? (flood.blocked ? 0.006 : 0.09) : 0);
-          if (charging) {
-            lvl += 0.025;
-            if (lvl >= 96) charging = false;
-          } else {
-            lvl -= drain;
-            if (lvl <= 15) charging = true;
-          }
-          let hist = battery.history;
-          if (hist.length === 0) hist = Array.from({ length: 20 }, (_, i) => ({ t: now - (20 - i) * 3000, level: Math.round((lvl + (20 - i) * 0.008) * 100) / 100 }));
-          battery = { ...battery, level: lvl, charging, history: tickCount % 3 === 0 ? [...hist, { t: now, level: Math.round(lvl * 100) / 100 }].slice(-200) : hist };
-        } else if (tickCount % 15 === 0) {
-          battery = { ...battery, history: [...battery.history, { t: now, level: battery.level }].slice(-240) };
-        }
+        const timeline = [
+          ...s.timeline,
+          { t: now, packets, blocked: flood?.blocked ? packets : 0, threats: events.filter((e) => e.severity !== 'info').length },
+        ].slice(-90);
 
-        set({
-          tickCount, radioOn, discoverable, discoverableUntil, paired, nearby, flood, lastActivity, battery, macRotations,
-          keyHistory, timeline, pendingRequest, autoOffNotified,
-        });
-        for (const e of events) get().addEvent({ simulated: nativeBt === null, ...e });
+        set({ tickCount, nearby, paired, flood, timeline, lastActivity });
+        for (const e of events) get().addEvent(e);
+        if (radioAction) void get().setRadioPower(radioAction.enable, radioAction.reason);
       },
     }),
     {
-      name: 'blueshield-en-v1',
-      version: 1,
+      name: 'blueshield-en-v2',
+      version: 2,
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => ({
         onboarded: s.onboarded,
         master: s.master,
         radioMode: s.radioMode,
-        radioOn: s.radioOn,
         deviceName: s.deviceName,
         modules: s.modules,
         settings: s.settings,
@@ -823,7 +1007,6 @@ export const useStore = create<State>()(
         trustedPlaces: s.trustedPlaces,
         radarMode: s.radarMode,
         quizBest: s.quizBest,
-        keyHistory: s.keyHistory,
         readEventsAt: s.readEventsAt,
       }),
       merge: (persisted, current) => {

@@ -30,41 +30,40 @@ export type DeviceType =
   | 'tool'
   | 'unknown';
 
-export type DeviceTag =
-  | 'tracker'
-  | 'beacon'
-  | 'suspicious'
-  | 'trusted'
-  | 'unencrypted'
-  | 'hacktool'
-  | 'paired'
-  | 'blocked';
+export type DeviceTag = 'tracker' | 'beacon' | 'suspicious' | 'trusted' | 'unencrypted' | 'hacktool' | 'paired' | 'blocked';
 
 export type RiskLevel = 'safe' | 'low' | 'medium' | 'high';
 
 export type EventAction = 'blocked' | 'allowed' | 'warned' | 'info' | 'user-blocked' | 'user-allowed';
 
-export interface Permissions {
-  contacts: boolean;
-  messages: boolean;
-  calls: boolean;
-  files: boolean;
+/** Pairing security class of a stored link key (root only: read from the Bluetooth config database). */
+export type KeyClass = 'legacy' | 'ssp-unauth' | 'ssp-auth' | 'sc-unauth' | 'sc-auth' | 'unknown';
+
+export interface PairingRecord {
+  address: string;
+  name: string;
+  linkKeyType: number;
+  le: boolean;
+  keyClass: KeyClass;
 }
 
+/** A device that Android reports as paired (bonded). Only fields Android actually exposes. */
 export interface PairedDevice {
   id: string;
   name: string;
   type: DeviceType;
   mac: string;
+  transport: 'classic' | 'le' | 'dual' | 'unknown';
+  majorClass: string;
+  /** 0 = unknown. */
   pairedAt: number;
+  /** Last time BlueShield observed this device connected. Set on first sight. */
   lastUsed: number;
   connected: boolean;
-  secure: 'sc' | 'legacy';
-  encrypted: boolean;
-  keyBytes: number;
+  secure: 'sc' | 'legacy' | 'unknown';
+  keyClass: KeyClass;
   trusted: boolean;
   note?: string;
-  permissions: Permissions;
 }
 
 export interface NearbyDevice {
@@ -85,7 +84,7 @@ export interface NearbyDevice {
   reason: string;
   tags: DeviceTag[];
   encrypted: boolean | null;
-  source: 'sim' | 'live';
+  source: 'live';
   services: string[];
   angle: number;
   follow?: boolean;
@@ -102,11 +101,13 @@ export interface SecurityEvent {
   advice: string;
   device?: string;
   action: EventAction;
+  /** Always false: BlueShield no longer generates simulated events. */
   simulated: boolean;
 }
 
 export interface TimelinePoint {
   t: number;
+  /** Bluetooth advertisements received during this second (real BLE scan). */
   packets: number;
   blocked: number;
   threats: number;
@@ -156,8 +157,6 @@ export interface Settings {
   sensitivity: 1 | 2 | 3;
   notifications: boolean;
   vibration: boolean;
-  simulation: boolean;
-  intensity: 1 | 2 | 3;
   dosThreshold: number;
   minKeyBytes: 7 | 10 | 16;
   staleDays: number;
@@ -170,7 +169,8 @@ export interface BatterySample {
 }
 
 export interface BatteryState {
-  source: 'live' | 'sim';
+  /** 'live' = navigator.getBattery(); 'none' = not available on this device. */
+  source: 'live' | 'none';
   level: number;
   charging: boolean;
   history: BatterySample[];
@@ -186,6 +186,27 @@ export interface SystemInfo {
   support: 'ok' | 'warn' | 'fail' | 'unknown';
   supportText: string;
   live: boolean;
+}
+
+/** Hardware and software identity read from the Android OS (APK only). */
+export interface DeviceDetails {
+  manufacturer: string;
+  brand: string;
+  model: string;
+  androidVersion: string;
+  sdkInt: number;
+  /** Android security patch level, format YYYY-MM-DD ('' when unknown). */
+  securityPatch: string;
+}
+
+/** Root detection result. granted = a su binary answered with uid=0. */
+export interface RootInfo {
+  checked: boolean;
+  granted: boolean;
+  suBinary: boolean;
+  testKeys: boolean;
+  message: string;
+  checkedAt: number | null;
 }
 
 export interface Capabilities {

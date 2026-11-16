@@ -1,6 +1,6 @@
 /* BlueShield service worker — offline caching & system notifications */
 const CACHE = 'blueshield-en-v2';
-const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-192.png', './icons/icon-512.png'];
+const CORE = ['./', './index.html', './manifest.webmanifest', './icons/icon-source.png', './icons/icon-source.png'];
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();

@@ -63,11 +63,11 @@ function useChecks(): Check[] {
           ? { id: 'knob', title: 'Encryption key length (KNOB)', status: 'warn', detail: `Minimum key: ${s.settings.minKeyBytes} bytes. 16 bytes (128-bit) is recommended.`, fix: () => s.updateSettings({ minKeyBytes: 16 }), fixLabel: 'Set 16 bytes' }
           : { id: 'knob', title: 'Encryption key length (KNOB)', status: 'pass', detail: '16-byte (128-bit) minimum key enforced.' },
     );
-    const unenc = s.paired.filter((p) => !p.encrypted);
+    const unenc = s.paired.filter((p) => p.keyClass === 'legacy' || p.keyClass === 'ssp-unauth');
     out.push(
       unenc.length && s.modules.sniffing !== 'on'
-        ? { id: 'enc', title: 'Unencrypted BLE links', status: 'warn', detail: `${unenc.map((p) => p.name).join(', ')}: transmits without encryption — exposed to sniffing.`, fix: () => s.setModule('sniffing', 'on'), fixLabel: 'Anti-Sniffing ON' }
-        : { id: 'enc', title: 'Unencrypted BLE links', status: 'pass', detail: unenc.length ? 'Unencrypted accessories exist, but Anti-Sniffing is set to ON.' : 'All paired connections use encryption.' },
+        ? { id: 'enc', title: 'Unencrypted BLE links', status: 'warn', detail: `${unenc.map((p) => p.name).join(', ')}: uses a weak pairing key — exposed to sniffing.`, fix: () => s.setModule('sniffing', 'on'), fixLabel: 'Anti-Sniffing ON' }
+        : { id: 'enc', title: 'Unencrypted BLE links', status: 'pass', detail: unenc.length ? 'Unencrypted accessories exist, but Anti-Sniffing is set to ON.' : 'No weak pairing keys found (pairing keys can only be verified with root access).' },
     );
     const off = Object.values(s.modules).filter((m) => m === 'off').length;
     out.push(

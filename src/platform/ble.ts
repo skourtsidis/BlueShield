@@ -150,7 +150,17 @@ export function drainLiveBuffer(): LiveAdvert[] {
   buffer.clear();
   return arr;
 }
-const pushAdvert = (a: LiveAdvert) => buffer.set(a.id, a);
+let advertCount = 0;
+/** Raw BLE advertisements received since the previous call (a real traffic rate, used for flood detection). */
+export function drainAdvertCount(): number {
+  const n = advertCount;
+  advertCount = 0;
+  return n;
+}
+const pushAdvert = (a: LiveAdvert) => {
+  advertCount += 1;
+  buffer.set(a.id, a);
+};
 
 const dvToU8 = (dv: DataView) => new Uint8Array(dv.buffer, dv.byteOffset, dv.byteLength);
 
@@ -186,7 +196,7 @@ function fromScanResult(r: ScanResult): LiveAdvert {
 export async function nativeInit(onEnabled: (enabled: boolean) => void): Promise<boolean> {
   if (!isNative()) return false;
   try {
-    await BleClient.initialize();
+    await BleClient.initialize({ androidNeverForLocation: true });
     onEnabled(await BleClient.isEnabled());
     await BleClient.startEnabledNotifications((v) => onEnabled(v));
     return true;
@@ -241,7 +251,7 @@ export async function webStartScan() {
     const svc: Record<string, Uint8Array> = {};
     ev.serviceData?.forEach((dv: DataView, key: string) => (svc[normUuid(key)] = dvToU8(dv)));
     pushAdvert({
-      id: ev.device?.id || String(Math.random()),
+      id: ev.device?.id || ev.name || 'unknown-device',
       name: ev.name || ev.device?.name || null,
       rssi: typeof ev.rssi === 'number' ? ev.rssi : -100,
       txPower: typeof ev.txPower === 'number' ? ev.txPower : undefined,
