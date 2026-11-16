@@ -1,8 +1,5 @@
 name: Build Android APK (BlueShield)
 
-
-
-
 on:
   workflow_dispatch:
   push:
