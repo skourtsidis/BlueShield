@@ -1,5 +1,8 @@
 name: Build Android APK (BlueShield)
 
+
+
+
 on:
   workflow_dispatch:
   push:
@@ -43,6 +46,22 @@ jobs:
       - name: Generate app icon & splash (optional)
         continue-on-error: true
         run: npx --yes @capacitor/assets generate --android
+
+      - name: Setup Gradle for wrapper recovery
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.14.3'
+
+      - name: Restore missing Gradle wrapper JAR
+        shell: bash
+        run: |
+          if [ ! -f android/gradle/wrapper/gradle-wrapper.jar ]; then
+            temp_project=$(mktemp -d)
+            printf "rootProject.name = 'wrapper-recovery'\n" > "$temp_project/settings.gradle"
+            gradle -p "$temp_project" wrapper --gradle-version 8.14.3 --no-daemon
+            mkdir -p android/gradle/wrapper
+            cp "$temp_project/gradle/wrapper/gradle-wrapper.jar" android/gradle/wrapper/gradle-wrapper.jar
+          fi
 
       - name: Build debug APK
         working-directory: android
